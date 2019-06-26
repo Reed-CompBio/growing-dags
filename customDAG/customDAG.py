@@ -180,7 +180,7 @@ def UpdateDownstream(G_0, u, v, downstream, nodes):
         i += 1
     return down
 
-def FindNextSubPath2(G, G_0, s, t):
+def FindNextSubPath(G, G_0, s, t):
     """
     Takes in a graph G, a DAG G_0, a starting node, and a ending node.
     Returns the optimal path that minimizes the total costs of all paths of the
@@ -193,27 +193,26 @@ def FindNextSubPath2(G, G_0, s, t):
     bestpath = None
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
-    newnodes = sortNodes(newGraph)
     nodes = sortNodes(G_0)
-    i = 0
-    while i < len(newnodes)-1:
-        j = i + 1
-        while j < len(newnodes):
-            G_0_u = G_0.findNode(newnodes[i].getName())
-            G_0_v = G_0.findNode(newnodes[j].getName())
+    for i in range(0,len(nodes)-1):
+        for j in range(i+1,len(nodes)):
+            new_u = newGraph.findNode(nodes[i].getName())
+            new_v = newGraph.findNode(nodes[j].getName())
             # Make sure the path starts and ends in G_0.
-            if G_0_u != None and G_0_v != None:
-                u = newnodes[i]
-                v = newnodes[j]
-                distance, path = d.applyDijkstra(newGraph, u, v)
+            if new_u != None and new_v != None:
+                distance, path = d.applyDijkstra(newGraph, new_u, new_v)
                 # If there is no shortest path, skip.
                 if distance == 0 and path == None:
-                    if j == len(nodes):
-                        i += 1
-                        j = i + 1
-                    else:
-                        j += 1
                     continue
+                # Check if there exist nodes in the path that are in G_0 other 
+                # than the start and end nodes.
+                for arc in path:
+                    if arc.getFinish() == new_v:
+                        pass
+                    if arc.getFinish() in G_0.getNodes():
+                        continue
+                G_0_u = nodes[i]
+                G_0_v = nodes[j]
                 up = UpdateUpstream(G_0, G_0_u, G_0_v, upstream, nodes)
                 down = UpdateDownstream(G_0, G_0_u, G_0_v, downstream, nodes)
                 newCost = 0
@@ -227,8 +226,6 @@ def FindNextSubPath2(G, G_0, s, t):
                 if score < bestscore:
                     bestscore = score
                     bestpath = path
-            j += 1
-        i+= 1
     return bestscore, bestpath
             
     
@@ -305,12 +302,12 @@ def apply(G, G_0, k, out):
     G_0 = ReadGraph(G_0)
     s = G_0.findNode('s')
     t = G_0.findNode('t')
-    currscore = 0
+    # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
-        bestscore, bestpath = FindNextSubPath2(G, G_0, s, t)
+        bestscore, bestpath = FindNextSubPath(G, G_0, s, t)
         if bestpath == None:
             path = 'None'
-            bestscore = currscore
+            bestscore = -1
         else:
             path = bestpath[0].getStart().getName()
             # Adds the new path to G_0.
@@ -320,10 +317,10 @@ def apply(G, G_0, k, out):
                 G_0_v = G_0.findNode(arc.getFinish().getName())
                 if G_0_v == None:
                     G_0_v = G_0.addNode(arc.getFinish().getName())
+                # updates G_0 by adding the new path.
                 newarc = G_0.addArc(G_0_u, G_0_v)
                 newarc.setCost(arc.getCost())
                 G_0_u = G_0_v
-            currscore = bestscore
         out.write(str(i)+'\t'+str(bestscore)+'\t'+path + '\n')
     out.close()
     return 

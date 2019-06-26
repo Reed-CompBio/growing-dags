@@ -322,6 +322,9 @@ def apply(G, G_0, k, out):
                 newarc.setCost(arc.getCost())
                 G_0_u = G_0_v
         out.write(str(i)+'\t'+str(bestscore)+'\t'+path + '\n')
+        # Stop if there is no path to be added.
+        if bestpath == None:
+            break
     out.close()
     return 
     

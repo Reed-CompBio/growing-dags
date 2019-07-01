@@ -1,14 +1,16 @@
 """
 USAGE:
-    python produce_stats.py node_file edge_file
+    python produce_stats.py folder_containing_all_edges/nodes_files
     
 Assumptions: 
     node_file and edge_file are tab-separated.
     node_file only contains none, receptor or tf as node_symbol
     all non-entry lines in the files start with #
+    the folder containing pathways is only composed of 1 edges and 1 nodes file for each pathway
 """
 
 import sys
+import glob
 
 def readNodes(node_file):
     nodes = {}
@@ -55,16 +57,24 @@ def produceStats(node_file, edge_file):
         total_outdegree += i[1]
     avg_indegree = total_indegree/len(nodes)
     avg_outdegree = total_outdegree/len(nodes)
-            
-    sep = node_file.find("-")
-    if sep != -1:
-        output_name = node_file[:sep]+"-stats_output.txt"
-    else:
-        output_name = "output_stats.txt"
-    with open(output_name, "w") as f1:
-        f1.write("#n_nodes\tn_edges\tn_tf\tn_receptors\tavg_indegree\tavg_outdegree\n")
-        f1.write("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(len(nodes), n_edges, n_tf, n_receptor, avg_indegree, avg_outdegree))
+     
+    results = [len(nodes), n_edges, n_tf, n_receptor, avg_indegree, avg_outdegree]
+    results = [str(i) for i in results]
+    return results   
+    
  
+def main(args):
+    folder = args[1]
+    edge_files = sorted(glob.glob(folder+"/*-edges.txt"))
+    node_files = sorted(glob.glob(folder+"/*-nodes.txt"))
+    with open("pathway_stats_output.txt", "w") as f1:
+        f1.write("#n_nodes\tn_edges\tn_tf\tn_receptors\tavg_indegree\tavg_outdegree\n")
+        for i in range(len(node_files)):
+            name = node_files[i][len(folder)+1:node_files[i].find("-")]
+            #name = name[len(folder)+1:-10]
+            f1.write("\n#"+name+"\n")
+            results = produceStats(node_files[i], edge_files[i])
+            f1.write("\t".join(results)+"\n")
 
 if __name__ == "__main__":
-    produceStats(sys.argv[1], sys.argv[2])
+    main(sys.argv)

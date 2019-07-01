@@ -71,7 +71,6 @@ def main(args):
         f1.write("#n_nodes\tn_edges\tn_tf\tn_receptors\tavg_indegree\tavg_outdegree\n")
         for i in range(len(node_files)):
             name = node_files[i][len(folder)+1:node_files[i].find("-")]
-            #name = name[len(folder)+1:-10]
             f1.write("\n#"+name+"\n")
             results = produceStats(node_files[i], edge_files[i])
             f1.write("\t".join(results)+"\n")

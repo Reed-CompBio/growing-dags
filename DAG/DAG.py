@@ -1,6 +1,7 @@
 import networkx as nx
 import math
 import matplotlib.pyplot as plt
+import time
 
 def ReadGraph(fileName, pagerank=False):
     """
@@ -38,7 +39,6 @@ def ReadGraph(fileName, pagerank=False):
         # interpreted as running PageRank and edgeflux on a weighted
         # graph. 
         net.add_edge(id1, id2, weight=eWeight)
-
     return net
 
 
@@ -48,6 +48,7 @@ def Creat_s_t(stfileName, G):
     object G. Creates a node 's' and a node 't'. Connecting all souce nodes in 
     G with 's' and all target nodes with 't'. Eg: 's'->source, target->'t'.
     """
+
     infile = open(stfileName, 'r')
     result = G.copy()
     for line in infile:
@@ -56,14 +57,14 @@ def Creat_s_t(stfileName, G):
             continue
         if line[0]=='#':
             continue
-        if items[1] == 'source':
+        if items[1] == 'source' or items[1] == 'receptor':
             source = items[0]
             if source in G.nodes():
-                result.add_edge('s', source, weight = 0)
-        if items[1] == 'target':
+                result.add_edge('s', source, weight = 0, log_weight = 0)
+        if items[1] == 'target' or items[1] == 'tf':
             target = items[0]
             if target in G.nodes():
-                result.add_edge(target, 't', weight = 0)
+                result.add_edge(target, 't', weight = 0, log_weight = 0)
     return result
     
 
@@ -148,7 +149,7 @@ def GraphCosts(G):
     Takes in a graph object, a starting node, and a ending node.
     Returns the total weights of edges in the graph G from s to t.
     """
-    return G.size('weight')
+    return G.size('log_weight')
 
 
 def TotalPathsCosts(G, s, t): 
@@ -160,7 +161,7 @@ def TotalPathsCosts(G, s, t):
     pc = PathCounter(G, s, t)
     for edge in G.edges():
         if edge in pc:
-            cost = G[edge[0]][edge[1]]['weight'] * pc[edge]
+            cost = G.get_edge_data(edge[0],edge[1])['weight'] * pc[edge]
             result += cost
     return result
 
@@ -226,8 +227,8 @@ def FindNextSubPath(G, G_0, s, t):
             v = nodes[j]
             # Make sure the path starts and ends in G_0.
             if u in newGraph.nodes() and v in newGraph.nodes() and nx.has_path(newGraph, u, v):
-                distance = nx.dijkstra_path_length(newGraph, u, v)
-                path = nx.dijkstra_path(newGraph, u, v)
+                # Calculates the shortest path and distance according to log_weight of edges.
+                distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
                 # If there is no shortest path, skip.
                 if distance == 0 and path == None:
                     continue
@@ -247,12 +248,28 @@ def FindNextSubPath(G, G_0, s, t):
                 newTotalCost = up[v] * down[u] * distance
                 oldTotalCost = 0
                 for edge in G_0.edges():
-                    oldTotalCost += up[edge[1]] * down[edge[0]] * G[edge[0]][edge[1]]['weight']
+                    oldTotalCost += up[edge[1]] * down[edge[0]] * G[edge[0]][edge[1]]['log_weight']
                 score = newTotalCost + oldTotalCost
                 if score < bestscore:
                     bestscore = score
                     bestpath = path
     return bestscore, bestpath
+
+def logTransformEdgeWeights(net):
+    """
+    Apply a negative logarithmic transformation to edge weights,
+    converting multiplicative values (where higher is better) to
+    additive costs (where lower is better).
+    Before the transformation, weights are costs of paths
+    If the weights in the input graph correspond to probabilities,
+    shortest paths in the output graph are maximum-probability paths
+    in the input graph.
+    """
+
+    for u,v in net.edges():
+        w = -math.log(max([0.000000001, net[u][v]['weight']]))/math.log(10)
+        net[u][v]['log_weight'] = w
+    return
 
 
 def getNewGraph(G, G_0):
@@ -280,8 +297,10 @@ def apply(G_name, G_0_name, stfileName, k, out):
     be added to graph G_0 based on G by applying the DAG algorithm. 
     """
     out = open(out, 'w')
-    out.write('#k\tpath_length\tpath\n')
+    out.write('#k\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
     G_original = ReadGraph(G_name)
+    # Set log_weights to edges of G
+    logTransformEdgeWeights(G_original)
     G_0_original = Get_G_0(G_0_name, G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = Creat_s_t(stfileName, G_0_original)
@@ -298,15 +317,17 @@ def apply(G_name, G_0_name, stfileName, k, out):
                     continue
                 path += '|' + node
             for m in range(0, len(bestpath)-1):
-                G_0.add_edge(bestpath[m], bestpath[m+1], weight = G[bestpath[m]][bestpath[m+1]])
-            #G_0.add_edges_from(newGraph.edges())
-            #G_0.add_nodes_from(newGraph.nodes())
-        out.write(str(i)+'\t'+str(bestscore)+'\t'+path + '\n')
+                G_0.add_edge(bestpath[m], bestpath[m+1], 
+                             weight = G[bestpath[m]][bestpath[m+1]]['weight'], 
+                             log_weight = G[bestpath[m]][bestpath[m+1]]['log_weight'])
+        out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
+                  + str(bestscore)+'\t'+path + '\n')
         print(bestpath)
         # Stop if there is no path to be added.
         if bestpath == None:
             break
     out.close()
+
     return 
 
 
@@ -333,7 +354,8 @@ if __name__ == "__main__":
     #print(G_0.nodes())
     #print(G_0.edges())
     #G_0_original = Get_G_0('G_0.txt', G)
-    apply('G.txt', 'G_0.txt','nodetypes.txt', 5, 'output.txt')
+    
+    apply('G.txt', 'G_0.txt','nodetypes.txt', 10, 'output.txt')
     #print(newGraph.edges())
     #print(nx.dijkstra_path(newGraph, 'a', 't'))
     

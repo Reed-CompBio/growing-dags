@@ -1,7 +1,9 @@
 import networkx as nx
 import math
-import matplotlib.pyplot as plt
 import time
+
+total_time_in_dij = 0
+lastpath = None
 
 def ReadGraph(fileName, pagerank=False):
     """
@@ -204,15 +206,28 @@ def UpdateDownstream(G_0, u, v, downstream, nodes):
         down[x] = number
         i += 1
     return down
-    
 
-def FindNextSubPath(G, G_0, s, t):
+"""
+def isConnectedsuc(u, lastpath):
+    if not lastpath:
+        return True
+    suc = u.successors()
+    while len(suc) > 0:
+        
+    
+def isConnectedpre(v, lastpath):
+    if not lastpath:
+        return True
+"""
+def FindNextSubPath(G, G_0, s, t, checked):
     """
     Takes in a graph G, a DAG G_0, a starting node, and a ending node.
     Returns the optimal path that minimizes the total costs of all paths of the
     new DAG G_1. Also returns the total costsof all paths after adding the
     optimal path in G_0.
     """
+    global total_time_in_dij
+    
     upstream  = CountUpstream(G_0, s, t)
     
     downstream = CountDownstream(G_0, s, t)
@@ -222,16 +237,31 @@ def FindNextSubPath(G, G_0, s, t):
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
     for i in range(1,len(nodes)-2):
+        u = nodes[i]
         for j in range(i+1,len(nodes)-1):
-            u = nodes[i]
             v = nodes[j]
             # Make sure the path starts and ends in G_0.
             if u in newGraph.nodes() and v in newGraph.nodes() and nx.has_path(newGraph, u, v):
-                # Calculates the shortest path and distance according to log_weight of edges.
-                distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
-                # If there is no shortest path, skip.
-                if distance == 0 and path == None:
-                    continue
+            # Calculates the shortest path and distance according to log_weight of edges.
+                start = time.time()
+                need_to_check = False
+                if u not in checked.keys():
+                    need_to_check = True
+                elif v not in checked[u].keys():
+                    need_to_check = True
+                else:
+                    distance, path = checked[u][v]
+                    for n in path[1:-1]:
+                        if n in nodes:
+                            need_to_check = True
+                if need_to_check:
+                    distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
+                    if u not in checked.keys():
+                        checked[u] = {}
+                    checked[u][v] = (distance, path)
+                end = time.time()
+                total_time_in_dij += end-start
+                
                 # Check if there exist nodes in the path that are in G_0 other 
                 # than the start and end nodes.
                 existInG_0 = False
@@ -253,7 +283,7 @@ def FindNextSubPath(G, G_0, s, t):
                 if score < bestscore:
                     bestscore = score
                     bestpath = path
-    return bestscore, bestpath
+    return bestscore, bestpath, checked
 
 def logTransformEdgeWeights(net):
     """
@@ -296,6 +326,8 @@ def apply(G_name, G_0_name, stfileName, k, out):
     Takes in two graphs G and G_0. returns a out.txt file containg k paths to 
     be added to graph G_0 based on G by applying the DAG algorithm. 
     """
+    global total_time_in_dij
+    
     out = open(out, 'w')
     out.write('#k\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
     G_original = ReadGraph(G_name)
@@ -304,9 +336,15 @@ def apply(G_name, G_0_name, stfileName, k, out):
     G_0_original = Get_G_0(G_0_name, G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = Creat_s_t(stfileName, G_0_original)
+    checked = {}
+    total_time_in_func = 0
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
-        bestscore, bestpath = FindNextSubPath(G, G_0, 's', 't')
+        start = time.time()
+        bestscore, bestpath, checked = FindNextSubPath(G, G_0, 's', 't', checked)
+        end = time.time()
+        print(i, end-start)
+        total_time_in_func += (end-start)
         if bestpath == None:
             path = 'None'
             bestscore = -1
@@ -322,10 +360,14 @@ def apply(G_name, G_0_name, stfileName, k, out):
                              log_weight = G[bestpath[m]][bestpath[m+1]]['log_weight'])
         out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
                   + str(bestscore)+'\t'+path + '\n')
+        print("bestpath:")
         print(bestpath)
+        print("\n")
         # Stop if there is no path to be added.
         if bestpath == None:
             break
+    print("In FindNextSubPath: {0}".format(total_time_in_func))
+    print("In dijkstra: {0}".format(total_time_in_dij))
     out.close()
 
     return 
@@ -358,5 +400,3 @@ if __name__ == "__main__":
     apply('G.txt', 'G_0.txt','nodetypes.txt', 10, 'output.txt')
     #print(newGraph.edges())
     #print(nx.dijkstra_path(newGraph, 'a', 't'))
-    
-    

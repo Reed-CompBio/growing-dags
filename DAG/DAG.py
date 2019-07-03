@@ -221,7 +221,9 @@ def isConnectedpre(v, lastpath):
 """
 def FindNextSubPath(G, G_0, s, t, checked):
     """
-    Takes in a graph G, a DAG G_0, a starting node, and a ending node.
+    Takes in a graph G, a DAG G_0, a starting node, a ending node, and a 
+    dictionary storing shortest paths between pairs of nodes that we've already
+    checked. For example: {u:{v:(distance, path)}}.
     Returns the optimal path that minimizes the total costs of all paths of the
     new DAG G_1. Also returns the total costsof all paths after adding the
     optimal path in G_0.
@@ -242,26 +244,28 @@ def FindNextSubPath(G, G_0, s, t, checked):
             v = nodes[j]
             # Make sure the path starts and ends in G_0.
             if u in newGraph.nodes() and v in newGraph.nodes() and nx.has_path(newGraph, u, v):
-            # Calculates the shortest path and distance according to log_weight of edges.
-                start = time.time()
+                # Find nodes we need to check the shortest path between them.
                 need_to_check = False
+                # First case: u is a newly added node to G_0.
                 if u not in checked.keys():
                     need_to_check = True
+                # Second case: v is a newly added node to G_0.
                 elif v not in checked[u].keys():
                     need_to_check = True
+                # Third case: neither u nor v is in G_0.
                 else:
                     distance, path = checked[u][v]
+                    # If there exists a node between u and v that is in G_0, we need to check it again.
                     for n in path[1:-1]:
                         if n in nodes:
                             need_to_check = True
                 if need_to_check:
+                    # Calculates the shortest path and distance according to log_weight of edges.
                     distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
+                    # After calculating the shortest path, adds the path to checked.
                     if u not in checked.keys():
                         checked[u] = {}
-                    checked[u][v] = (distance, path)
-                end = time.time()
-                total_time_in_dij += end-start
-                
+                    checked[u][v] = (distance, path)                
                 # Check if there exist nodes in the path that are in G_0 other 
                 # than the start and end nodes.
                 existInG_0 = False
@@ -343,8 +347,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
         start = time.time()
         bestscore, bestpath, checked = FindNextSubPath(G, G_0, 's', 't', checked)
         end = time.time()
-        print(i, end-start)
-        total_time_in_func += (end-start)
+        print('#'+str(i), end-start)
         if bestpath == None:
             path = 'None'
             bestscore = -1

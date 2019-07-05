@@ -380,20 +380,23 @@ def apply(G_name, G_0_name, stfileName, k, out):
             path = 'None'
             bestscore = -1
         else:
-            path = bestpath[0]
-            for node in bestpath:
-                if node == bestpath[0]:
-                    continue
-                path += '|' + node
+            print("bestpath:")
+            print(bestpath)
+            print("\n")
             for m in range(0, len(bestpath)-1):
                 G_0.add_edge(bestpath[m], bestpath[m+1], 
                              weight = G[bestpath[m]][bestpath[m+1]]['weight'], 
                              log_weight = G[bestpath[m]][bestpath[m+1]]['log_weight'])
+            
+            if bestpath[0] == "s":
+                bestpath = bestpath[1:]
+            elif bestpath[-1] == "t":
+                bestpath = bestpath[:-1]
+            path = "|".join(bestpath)
+                
         out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
                   + str(bestscore)+'\t'+path + '\n')
-        print("bestpath:")
-        print(bestpath)
-        print("\n")
+        
         # Stop if there is no path to be added.
         if bestpath == None:
             break

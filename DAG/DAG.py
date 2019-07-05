@@ -238,34 +238,43 @@ def FindNextSubPath(G, G_0, s, t, checked):
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
-    for i in range(1,len(nodes)-2):
+    for i in range(len(nodes)-1):
         u = nodes[i]
-        for j in range(i+1,len(nodes)-1):
+        for j in range(i+1,len(nodes)):
             v = nodes[j]
             # Make sure the path starts and ends in G_0.
             if u in newGraph.nodes() and v in newGraph.nodes() and nx.has_path(newGraph, u, v):
+                
                 # Find nodes we need to check the shortest path between them.
                 need_to_check = False
+                
                 # First case: u is a newly added node to G_0.
                 if u not in checked.keys():
                     need_to_check = True
+                    
                 # Second case: v is a newly added node to G_0.
                 elif v not in checked[u].keys():
                     need_to_check = True
+                    
                 # Third case: both of u and v are in G_0.
                 else:
                     distance, path = checked[u][v]
+                    if len(path) == 2:
+                        need_to_check = True
                     # If there exists a node between u and v that is in G_0, we need to check it again.
                     for n in path[1:-1]:
                         if n in nodes:
                             need_to_check = True
                 if need_to_check:
+                    
                     # Calculates the shortest path and distance according to log_weight of edges.
                     distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
+                    
                     # After calculating the shortest path, adds the path to checked.
                     if u not in checked.keys():
                         checked[u] = {}
-                    checked[u][v] = (distance, path)                
+                    checked[u][v] = (distance, path)
+                    
                 # Check if there exist nodes in the path that are in G_0 other 
                 # than the start and end nodes.
                 existInG_0 = False
@@ -274,6 +283,7 @@ def FindNextSubPath(G, G_0, s, t, checked):
                         continue
                     elif node in G_0.nodes():
                         existInG_0 = True
+                        
                 # Skip if there exists any node between the start and end that is in G_0.
                 if existInG_0 == True:
                     continue
@@ -288,6 +298,7 @@ def FindNextSubPath(G, G_0, s, t, checked):
                     bestscore = score
                     bestpath = path
     return bestscore, bestpath, checked
+
 
 def logTransformEdgeWeights(net):
     """
@@ -304,6 +315,23 @@ def logTransformEdgeWeights(net):
         w = -math.log(max([0.000000001, net[u][v]['weight']]))/math.log(10)
         net[u][v]['log_weight'] = w
     return
+
+
+def undoLogTransformPathLengths(paths):
+    """
+    Undoes the logarithmic transform to path lengths, converting the
+    path lengths back into terms of the original edge weights
+    :param paths: paths to apply the transform to
+    """
+
+    new_paths_list = []
+
+    # Reconstructs the path list with each edge distance un-log transformed.
+    # We build a new list because tuples are unmodifiable.
+    for path in paths:
+        new_path = [(x[0], 10 ** (-1 * x[1])) for x in path]
+        new_paths_list.append(new_path)
+    return new_paths_list
 
 
 def getNewGraph(G, G_0):
@@ -333,7 +361,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
     global total_time_in_dij
     
     out = open(out, 'w')
-    out.write('#k\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
+    out.write('#j\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
     G_original = ReadGraph(G_name)
     # Set log_weights to edges of G
     logTransformEdgeWeights(G_original)

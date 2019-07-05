@@ -252,7 +252,7 @@ def FindNextSubPath(G, G_0, s, t, checked):
                 # Second case: v is a newly added node to G_0.
                 elif v not in checked[u].keys():
                     need_to_check = True
-                # Third case: neither u nor v is in G_0.
+                # Third case: both of u and v are in G_0.
                 else:
                     distance, path = checked[u][v]
                     # If there exists a node between u and v that is in G_0, we need to check it again.

@@ -18,7 +18,7 @@ Assumptions:
 
 
 NODE_FILE_GLOB = "/*-nodes.txt"
-EDGE_FILE_GLOB = "/*-edges.txt"
+INTERACTOME = '/Users/Tunc/Desktop/Reed/PathLinker/DAG/2015pathlinker-weighted.txt'
 """
 The G_0_FILE_GLOB is temporary until I know how we are going to obtain G_0s.
 """
@@ -38,10 +38,9 @@ def extractPathwayName(filename, folder):
 
 
 def main(args):
-    k = args[1]
+    k = int(args[1])
     folder = args[2]
     node_files = sorted(glob.glob(folder + NODE_FILE_GLOB))
-    edge_files = sorted(glob.glob(folder + EDGE_FILE_GLOB))
     G_0_files = sorted(glob.glob(folder + G_0_FILE_GLOB))
     """
     We might want to change DAG writing an output file.
@@ -50,8 +49,10 @@ def main(args):
     creates an output with everything in one file.
     """
     for i in range(len(node_files)):
-        output_name = extractPathwayName(node_files[i], folder) + "-output.txt"
-        d.apply(edge_files[i], G_0_files[i], node_files[i], k, output_name)
+        pathway_name = extractPathwayName(node_files[i], folder)
+        output_name = pathway_name + "-output.txt"
+        print("Currently DAGing {0}".format(pathway_name))
+        d.apply(INTERACTOME, G_0_files[i], node_files[i], k, output_name)
         
 if __name__ == "__main__":
     main(sys.argv)

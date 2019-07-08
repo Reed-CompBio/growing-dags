@@ -85,6 +85,7 @@ def Get_G_0(G_0_name, G):
     """
     edges = []
     infile = open(G_0_name, 'r')
+    path = []
     for line in infile:
         items = [x.strip() for x in line.rstrip().split('\t')]
         if line=='\n':
@@ -93,11 +94,15 @@ def Get_G_0(G_0_name, G):
             continue
         id1 = items[0]
         id2 = items[1]
+        if id1 not in path:
+            path.append(id1)
+        path.append(id2)
         edge = (id1, id2)
         if edge in G.edges():
             edges.append(edge)
     G_0 = nx.edge_subgraph(G, edges)
-    return G_0
+    pathstring = '|'.join(path)
+    return G_0, pathstring
     
     
 def CountUpstream(G, s, t):
@@ -373,11 +378,15 @@ def apply(G_name, G_0_name, stfileName, k, out):
     G_original = ReadGraph(G_name)
     # Set log_weights to edges of G
     logTransformEdgeWeights(G_original)
-    G_0_original = Get_G_0(G_0_name, G_original)
+    G_0_original, G_0_path = Get_G_0(G_0_name, G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = Creat_s_t(stfileName, G_0_original)
     checked = {}
     total_time_in_func = 0
+    
+    out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
+                  + str(0)+'\t'+G_0_path + '\n')
+    
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
         start = time.time()

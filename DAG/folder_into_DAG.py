@@ -1,19 +1,18 @@
 import sys
 import glob
-#import test as d
 import DAG as d
 
-from multiprocessing.dummy import Pool as ThreadPool
+from multiprocessing.dummy import Pool as ThreadPool 
 import itertools
 
 """
 Usage:
     python folder_into_DAG.py k folder_containing_edges/nodes/G_0_files
-Eg:
+Eg: 
     python folder_into_DAG.py 5 NetPath_Pathways
-
+    
 Assumptions:
-    the folder containing pathways is only composed of
+    the folder containing pathways is only composed of 
         1 edge, 1 node and 1 G_0 file for each pathway
     folder name doesn't contain '-'
 """
@@ -22,7 +21,7 @@ Assumptions:
 
 
 NODE_FILE_GLOB = "/*-nodes.txt"
-INTERACTOME = '/afs/reed.edu/user/k/o/koset/Desktop/DAG/2015pathlinker-weighted.txt'
+INTERACTOME = '/Users/Tunc/Desktop/Reed/PathLinker/DAG/2015pathlinker-weighted.txt'
 """
 The G_0_FILE_GLOB is temporary until I know how we are going to obtain G_0s.
 """
@@ -32,10 +31,10 @@ G_0_FILE_GLOB = "/*-G_0.txt"
 def extractPathwayName(filename, folder):
     """
     Input node/edge file containing name of pathway and name of the folder they are contained
-    expected format for filename:
-        folder/pathway_name-edges.txt OR
+    expected format for filename: 
+        folder/pathway_name-edges.txt OR 
         folder/pathway_name-nodes.txt
-
+        
     """
     name = filename[len(folder)+1:filename.find("-")]
     return name
@@ -67,15 +66,18 @@ def main(args):
     threads = 1
     if len(args) > 3:
         threads = int(args[3])
-    node_files = sorted(glob.glob(folder + NODE_FILE_GLOB))
+    node_files = []
     G_0_files = sorted(glob.glob(folder + G_0_FILE_GLOB))
     output_names = []
-    for i in range(len(node_files)):
-        pathway_name = extractPathwayName(node_files[i], folder)
+    for i in range(len(G_0_files)):
+        pathway_name = extractPathwayName(G_0_files[i], folder)
         output_names.append(pathway_name + "-output.txt")
+        node_files.append(pathway_name + "-nodes.txt")
     pool = ThreadPool(threads)
-    pool.starmap(d.apply, zip(itertools.repeat(INTERACTOME), G_0_files, node_files, itertools.repeat(k), output_names), chunksize=1)
-
-
+    pool.starmap(d.apply, zip(itertools.repeat(INTERACTOME), G_0_files, node_files, itertools.repeat(k), output_names))
+    
+       
 if __name__ == "__main__":
     main(sys.argv)
+        
+    

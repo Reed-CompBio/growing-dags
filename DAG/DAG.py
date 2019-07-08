@@ -50,9 +50,10 @@ def Creat_s_t(stfileName, G):
     object G. Creates a node 's' and a node 't'. Connecting all souce nodes in 
     G with 's' and all target nodes with 't'. Eg: 's'->source, target->'t'.
     """
-
     infile = open(stfileName, 'r')
     result = G.copy()
+    addedges = []
+    removeedges = []
     for line in infile:
         items = [x.strip() for x in line.rstrip().split('\t')]
         if line=='\n':
@@ -62,11 +63,18 @@ def Creat_s_t(stfileName, G):
         if items[1] == 'source' or items[1] == 'receptor':
             source = items[0]
             if source in G.nodes():
-                result.add_edge('s', source, weight = 0, log_weight = 0)
+                for neighbor in G.predecessors(source):
+                    removeedges.append((neighbor, source))
+                addedges.append(('s', source))
+                
         if items[1] == 'target' or items[1] == 'tf':
             target = items[0]
             if target in G.nodes():
-                result.add_edge(target, 't', weight = 0, log_weight = 0)
+                for neighbor in G.successors(target):
+                    removeedges.append((target, neighbor))
+                addedges.append((target, 't'))
+    result.remove_edges_from(removeedges)
+    result.add_edges_from(addedges, weight = 0, log_weight = 0)
     return result
     
 
@@ -390,7 +398,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
             
             if bestpath[0] == "s":
                 bestpath = bestpath[1:]
-            elif bestpath[-1] == "t":
+            if bestpath[-1] == "t":
                 bestpath = bestpath[:-1]
             path = "|".join(bestpath)
                 
@@ -434,3 +442,4 @@ if __name__ == "__main__":
     apply('G.txt', 'G_0.txt','nodetypes.txt', 10, 'output.txt')
     #print(newGraph.edges())
     #print(nx.dijkstra_path(newGraph, 'a', 't'))
+    

@@ -10,7 +10,7 @@ colors = {True: "yellow", False: "green"}
 shapes = {"tf" : "rectangle", "receptor" : "triangle", "none" : "ellipse"}
 edge_styles = {True : "solid", False : "dashed", "G_0": "solid"}
 edge_width = {True: 1, False: 0.5, "G_0": 1}
-edge_color = {True: "red", False: "black", "G_0": "blue"}
+edge_color = {True: "red", False: "black", "G_0": "#EA1BED"}#pink
 INTERACTOME = '/Users/Tunc/Desktop/Reed/PathLinker/DAG/2015pathlinker-weighted.txt'
 
 
@@ -22,7 +22,6 @@ def createGSGraph(pathway):
     pathway_edges = set()
     output_nodes = set()
     output_edges = set()
-    G_0_edges = set()
     
     """
     with open(INTERACTOME) as interactome:
@@ -33,14 +32,7 @@ def createGSGraph(pathway):
             interactome_nodes.add(items[0])
             interactome_nodes.add(items[1])
             interactome_edges[(items[0], items[1])] = items[2]
-     """    
-    with open(pathway+"-G_0.txt") as G_0_file:
-        for line in G_0_file:
-            if line == "\n" or line[0] == "#":
-                continue
-            items = line.rstrip().split("\t")
-            G_0_edges.add((items[0], items[1]))
-    
+     """
     with open(pathway+"-nodes.txt") as nodes_file:
         for line in nodes_file:
             if line == "\n" or line[0] == "#":
@@ -60,31 +52,32 @@ def createGSGraph(pathway):
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
+            j = items[0]
             path = items[3]
             nodes = path.split("|")
+            
+            for node in nodes:
+                if node not in output_nodes:
+                    t = "none"
+                    inPathway = False
+                    if node in pathway_nodes:
+                        t = pathway_nodes[node]
+                        inPathway = True
+                    G.add_node(node, label = node, k = j)
+                    G.add_node_style(node, shape = shapes[t], color = colors[inPathway])
+                    output_nodes.add(node)
+                    
             for i in range(len(nodes)-1):
-                output_nodes.add(nodes[i])
-                output_nodes.add(nodes[i+1])
-                output_edges.add((nodes[i], nodes[i+1]))
-    
-    for i in output_nodes:
-        t = "none"
-        inPathway = False
-        if i in pathway_nodes:
-            t = pathway_nodes[i]
-            inPathway = True
-        G.add_node(i, label = i)
-        G.add_node_style(i, shape = shapes[t], color = colors[inPathway])
-        
-    for i in output_edges:
-        inPathway = False
-        if (i[0], i[1]) in pathway_edges:
-            inPathway = True
-            if (i[0], i[1]) in G_0_edges:
-                inPathway = "G_0"
-        G.add_edge(i[0], i[1], directed = True)
-        G.add_edge_style(i[0], i[1], directed = True, width = edge_width[inPathway], color = edge_color[inPathway], edge_style = edge_styles[inPathway])
-    return G
+                if (nodes[i], nodes[i+1]) not in output_edges:
+                    if (nodes[i], nodes[i+1]) in pathway_edges:
+                        inPathway = True
+                        if j == "0":
+                            inPathway = "G_0"
+                    G.add_edge(nodes[i], nodes[i+1], directed = True, k = j)
+                    G.add_edge_style(nodes[i], nodes[i+1], directed = True, width = edge_width[inPathway], color = edge_color[inPathway], edge_style = edge_styles[inPathway])
+                    output_edges.add((nodes[i], nodes[i+1]))
+            
+        return G
     
 def post(G, gs):
     try:
@@ -105,7 +98,3 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv)
-        
-        
-        
-        

@@ -6,7 +6,7 @@ USERNAME ='koset@reed.edu'
 PASSWORD = "nfbnke4Iifdc5D99Ee9V9@FA!8NFZie4"
 
 
-colors = {True: "yellow", False: "green"}
+colors = {True: "#FEFCA0", False: "#8AECFE"}
 shapes = {"tf" : "rectangle", "receptor" : "triangle", "none" : "ellipse"}
 edge_styles = {True : "solid", False : "dashed", "G_0": "solid"}
 edge_width = {True: 1, False: 0.5, "G_0": 1}
@@ -22,6 +22,9 @@ def createGSGraph(pathway):
     pathway_edges = set()
     output_nodes = set()
     output_edges = set()
+    
+    edge_count = 0
+    inPathway_edge = 0
     
     """
     with open(INTERACTOME) as interactome:
@@ -64,19 +67,21 @@ def createGSGraph(pathway):
                         t = pathway_nodes[node]
                         inPathway = True
                     G.add_node(node, label = node, k = j)
-                    G.add_node_style(node, shape = shapes[t], color = colors[inPathway])
+                    G.add_node_style(node, shape = shapes[t], color = colors[inPathway], width = 50, height = 40)
                     output_nodes.add(node)
                     
             for i in range(len(nodes)-1):
+                edge_count += 1
                 if (nodes[i], nodes[i+1]) not in output_edges:
                     if (nodes[i], nodes[i+1]) in pathway_edges:
                         inPathway = True
+                        inPathway_edge += 1
                         if j == "0":
                             inPathway = "G_0"
                     G.add_edge(nodes[i], nodes[i+1], directed = True, k = j)
                     G.add_edge_style(nodes[i], nodes[i+1], directed = True, width = edge_width[inPathway], color = edge_color[inPathway], edge_style = edge_styles[inPathway])
                     output_edges.add((nodes[i], nodes[i+1]))
-            
+
         return G
     
 def post(G, gs):

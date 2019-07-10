@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import glob
+import time
 
 NODE_FILE_GLOB = "/*-nodes.txt"
 EDGE_FILE_GLOB = "/*-edges.txt"
@@ -42,25 +43,29 @@ def main(args):
     node_files = sorted(glob.glob(folder + NODE_FILE_GLOB))
     edge_files = sorted(glob.glob(folder + EDGE_FILE_GLOB))
     for i in range(len(node_files)):
+        receptor, tf = getReAndTf(node_files[i])
+        if len(receptor) == 0 or len(tf) == 0:
+            continue
         args = "python PathLinker.py " + "--write-paths " + edge_files[i] + " " + node_files[i]
         subprocess.call(args, shell=True)
+        time.sleep(3)
         with open(PL_OUTPUT_NAME) as f1:
             for line in f1:
                 if line[0] == "#":
                     continue
                 if line=='\n':
                     continue
-                ls = line.split("\t")
-                path = ls[2].split("|")
-                receptor, tf = getReAndTf(node_files[i])
-                if len(path) > 2 and path[0] in receptor and path[-1] in tf:
+                ls = line.rstrip().split("\t")
+                nodes = ls[2].split("|")
+                print("Nodes: {}".format(nodes))
+                if len(nodes) > 2 and nodes[0] in receptor and nodes[-1] in tf:
                     break
         pathway_name = extractPathwayName(node_files[i], folder)
         with open(pathway_name+G_0_FILE_NAME, "w") as f2:
             f2.write("#{0}\n".format(pathway_name))
             f2.write("#tail\thead\n")
-            for i in range(len(path)-1):
-                f2.write(path[i]+"\t"+path[i+1]+"\n")
+            for i in range(len(nodes)-1):
+                f2.write(nodes[i]+"\t"+nodes[i+1]+"\n")
 
 if __name__ == "__main__":
     main(sys.argv)

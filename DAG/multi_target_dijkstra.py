@@ -40,18 +40,9 @@ def heap_update(heap, node, dist, current_node, current_path):
     return heap
 """
 
-def heap_update(heap, G, current_node, current_dist, current_path):
+def heap_update(heap, G, indeces, current_node, current_dist, current_path):
     for node in G.successors(current_node):
-        index = 0
-        not_seen = True
-        for i in heap:
-            if i[1] == node:
-                not_seen = False
-                break
-            index += 1
-            
-        if not_seen:
-            continue
+        index = indeces[node]
         
         dist = current_dist + G[current_node][node]["weight"]
         if heap[index][0] > dist:
@@ -60,12 +51,15 @@ def heap_update(heap, G, current_node, current_dist, current_path):
             new_path.append(node)
             heap[index][2] = new_path
     hq.heapify(heap)
+    for i in range(len(heap)):
+        indeces[heap[i][1]] = i
     return heap
             
 
 def multi_target_dijkstra(G, u, vset):
     heap = []   # contains lists of distance, node, path
     finished = {} # node -> (dist, path)
+    indeces = {}
     
     # Create priority queue entries for each node
     for item in G.nodes():
@@ -75,6 +69,9 @@ def multi_target_dijkstra(G, u, vset):
             path = [u]
             dist = 0
         hq.heappush(heap, [dist, item, path])
+        
+    for i in range(len(heap)):
+        indeces[heap[i][1]] = i
 
     # Iterate over vset so function will quit when all significant nodes are found
     while len(vset) > 0:
@@ -82,7 +79,7 @@ def multi_target_dijkstra(G, u, vset):
         # A node popping from the priority queue means shortest path to it is found
         if current_node in vset:
             vset.remove(current_node)
-        heap = heap_update(heap, G, current_node, current_dist, current_path)
+        heap = heap_update(heap, indeces, G, current_node, current_dist, current_path)
         """
         for node in G.successors(current_node):
             dist = current_dist + G[current_node][node]["weight"]

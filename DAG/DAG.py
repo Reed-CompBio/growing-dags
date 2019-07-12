@@ -1,6 +1,8 @@
 import networkx as nx
 import math
 import time
+import multi_target_dijkstra as mt
+import copy
 
 total_time_in_dij = 0
 lastpath = None
@@ -15,12 +17,13 @@ def ReadGraph(fileName, pagerank=False):
     # Read the network file
     # infile = open(network_file, 'r')
     for line in infile:
-        items = [x.strip() for x in line.rstrip().split('\t')]
         # Skip empty lines or those beginning with '#' comments
         if line=='\n':
             continue
         if line[0]=='#':
             continue
+        
+        items = [x.strip() for x in line.rstrip().split('\t')]
         id1 = items[0]
         id2 = items[1]
         # Ignore self-edges
@@ -55,11 +58,12 @@ def Creat_s_t(stfileName, G):
     addedges = []
     removeedges = []
     for line in infile:
-        items = [x.strip() for x in line.rstrip().split('\t')]
         if line=='\n':
             continue
         if line[0]=='#':
             continue
+        items = [x.strip() for x in line.rstrip().split('\t')]
+        
         if items[1] == 'source' or items[1] == 'receptor':
             source = items[0]
             if source in G.nodes():
@@ -87,11 +91,13 @@ def Get_G_0(G_0_name, G):
     infile = open(G_0_name, 'r')
     path = []
     for line in infile:
-        items = [x.strip() for x in line.rstrip().split('\t')]
         if line=='\n':
             continue
         if line[0]=='#':
             continue
+        
+        items = [x.strip() for x in line.rstrip().split('\t')]
+        
         id1 = items[0]
         id2 = items[1]
         if id1 not in path:
@@ -246,70 +252,72 @@ def FindNextSubPath(G, G_0, s, t, checked):
     upstream  = CountUpstream(G_0, s, t)
     
     downstream = CountDownstream(G_0, s, t)
+
     bestscore = math.inf
     bestpath = None
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
+                    
+                    
     for i in range(len(nodes)-1):
         u = nodes[i]
-        for j in range(i+1,len(nodes)):
-            v = nodes[j]
-            # Make sure the path starts and ends in G_0.
-            if u in newGraph.nodes() and v in newGraph.nodes() and nx.has_path(newGraph, u, v):
-                
-                # Find nodes we need to check the shortest path between them.
-                need_to_check = False
-                
-                # First case: u is a newly added node to G_0.
-                if u not in checked.keys():
-                    need_to_check = True
-                    
-                # Second case: v is a newly added node to G_0.
-                elif v not in checked[u].keys():
-                    need_to_check = True
-                    
-                # Third case: both of u and v are in G_0.
-                else:
-                    distance, path = checked[u][v]
-                    if len(path) == 2:
-                        need_to_check = True
-                    # If there exists a node between u and v that is in G_0, we need to check it again.
-                    for n in path[1:-1]:
-                        if n in nodes:
-                            need_to_check = True
-                if need_to_check:
-                    
-                    # Calculates the shortest path and distance according to log_weight of edges.
-                    distance, path= nx.single_source_dijkstra(newGraph, u, target = v, weight = 'log_weight')
-                    
-                    # After calculating the shortest path, adds the path to checked.
-                    if u not in checked.keys():
-                        checked[u] = {}
-                    checked[u][v] = (distance, path)
-                    
-                # Check if there exist nodes in the path that are in G_0 other 
-                # than the start and end nodes.
-                existInG_0 = False
-                for node in path:
-                    if node == u or node == v:
-                        continue
-                    elif node in G_0.nodes():
-                        existInG_0 = True
-                        
-                # Skip if there exists any node between the start and end that is in G_0.
-                if existInG_0 == True:
+        print('u node: {}'.format(u))
+        
+        if u not in newGraph.nodes():
+            continue
+        
+        vset = set(nodes[i+1:])
+        vset_copy = copy.deepcopy(vset)
+        for v in vset_copy:
+            if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
+                vset.remove(v)
+        
+        vset_copy = copy.deepcopy(vset)
+        
+        if u in checked.keys():
+            for v in vset.copy():
+                if v in checked[u].keys():
+                    path = checked[u][v][1]
+                    if len(path) > 2:
+                        inG_0 = [node for node in path[1:-1] if node in nodes]
+                        if len(inG_0) == 0:
+                            vset.remove(v)
+        else:
+            checked[u] = {}
+            
+        if len(vset) > 0:
+            print('vest_copy: ', vset_copy)
+            start = time.time()
+            checked[u] = {**checked[u], **mt.multi_target_dijkstra(newGraph, u, vset.copy())}
+            end = time.time()
+            print("Dijkstra took {} seconds".format(end-start))
+        for v in vset_copy:
+            u_v_dist, u_v_path = checked[u][v]
+            print("dist: {0}, path: {1}".format(u_v_dist, u_v_path))
+            '''
+            existsInG_0 = False
+            for node in u_v_path:
+                if node == u or node == v:
                     continue
-                up = UpdateUpstream(G_0, u, v, upstream, nodes)
-                down = UpdateDownstream(G_0, u, v, downstream, nodes)
-                newTotalCost = up[v] * down[u] * distance
-                oldTotalCost = 0
-                for edge in G_0.edges():
-                    oldTotalCost += up[edge[1]] * down[edge[0]] * G[edge[0]][edge[1]]['log_weight']
-                score = newTotalCost + oldTotalCost
-                if score < bestscore:
-                    bestscore = score
-                    bestpath = path
+                elif node in G_0.nodes():
+                    print("Node {0} in path {1} exists in G_0".format(node, u_v_path))
+                    existsInG_0 = True
+            if existsInG_0:
+                continue
+            '''
+            up = UpdateUpstream(G_0, u, v, upstream, nodes)
+            down = UpdateDownstream(G_0, u, v, downstream, nodes)
+            newTotalCost = up[v] * down[u] * u_v_dist
+            oldTotalCost = 0
+            for edge in G_0.edges():
+                oldTotalCost += up[edge[1]] * down[edge[0]] * G[edge[0]][edge[1]]['weight']
+            score = newTotalCost + oldTotalCost
+            if score < bestscore:
+                bestscore = score
+                bestpath = u_v_path
+    print("bestpath: {}".format(bestpath))
+    print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked
 
 

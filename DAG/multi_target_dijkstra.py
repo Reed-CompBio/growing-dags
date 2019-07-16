@@ -23,11 +23,11 @@ def heap_update(heap, node, dist, current_node, current_path):
             not_seen = False
             break
         index += 1
-    
+
     # If node has been previously popped, nothing to update
     if not_seen:
         return heap
-    
+
     # Update only if new distance is shorter
     if heap[index][0] > dist:
         heap[index][0] = dist
@@ -36,14 +36,17 @@ def heap_update(heap, node, dist, current_node, current_path):
         heap[index][2] = new_path
         # Re-heapify to restore priority queue
         hq.heapify(heap)
-        
+
     return heap
 """
 
 def heap_update(heap, G, indeces, current_node, current_dist, current_path):
     for node in G.successors(current_node):
-        index = indeces[node]
-        
+        try:
+            index = indeces[node]
+        except KeyError:
+            continue
+
         dist = current_dist + G[current_node][node]["weight"]
         if heap[index][0] > dist:
             heap[index][0] = dist
@@ -52,23 +55,23 @@ def heap_update(heap, G, indeces, current_node, current_dist, current_path):
             heap[index][2] = new_path
     hq.heapify(heap)
     return heap
-            
+
 
 def multi_target_dijkstra(G, u, vset):
     heap = []   # contains lists of distance, node, path
     finished = {} # node -> (dist, path)
-    
-    
+
+
     # Create priority queue entries for each node
     for item in G.nodes():
         path = None
-        dist = math.inf
+        dist = 9999999999999999999999999999999999999999999999999999999999999
         if item == u:
             path = [u]
             dist = 0
         hq.heappush(heap, [dist, item, path])
-        
-    
+
+
     # Iterate over vset so function will quit when all significant nodes are found
     while len(vset) > 0:
         current_node, current_dist, current_path, finished = pop(heap, finished)
@@ -84,4 +87,4 @@ def multi_target_dijkstra(G, u, vset):
             dist = current_dist + G[current_node][node]["weight"]
             heap = heap_update(heap, node, dist, current_node, current_path)
         """
-    return finished   
+    return finished

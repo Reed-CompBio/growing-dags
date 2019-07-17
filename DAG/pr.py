@@ -202,7 +202,7 @@ def main(args):
                 pl_flag = True
                 pl_output = args[4]
         
-    pos = getPositives(output_file, mode)
+    pos = getPositives(pathway, mode)
     # pos is a set containing nodes/edges of the pathway from NetPath
     dic = getOutput(output_file, mode)
     # dic is a dictionary with j as keys and nodes/paths added at j as values

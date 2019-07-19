@@ -14,6 +14,7 @@ def getOutputNodes(output_file):
         IMPORTANT: nodes are NOT guaranteed to be unique and will repeat
         """
     dic = {}
+    num_of_nodes = 0
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -21,7 +22,9 @@ def getOutputNodes(output_file):
             items = line.rstrip().split("\t")
             path = items[3]
             nodes = path.split("|")
-            dic[int(items[0])] = len(nodes)
+            num_of_nodes += len(nodes)
+            dic[int(items[0])] = num_of_nodes
+            
     return dic
 
 
@@ -31,6 +34,7 @@ def getOutputEdges(output_file):
         has j as key and a list of newly added edges as values.
         """
     dic = {}
+    num_of_edges = 0
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -38,7 +42,8 @@ def getOutputEdges(output_file):
             items = line.rstrip().split("\t")
             path = items[3]
             nodes = path.split("|")
-            dic[int(items[0])] = len(nodes)//2 + 1
+            num_of_edges += len(nodes)//2 + 1
+            dic[int(items[0])] = num_of_edges
     return dic
 
 
@@ -57,14 +62,16 @@ def p_getOutputNodes():
     IMPORTANT: nodes are NOT guaranteed to be unique and will repeat
     """
     dic = {}
-    with open("out_k_200-paths.txt") as output_file:    #for PathLinker
+    num_of_nodes = 0
+    with open("outk-200-paths.txt") as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
             path = items[2] #2 for PathLinker output
             nodes = path.split("|")
-            dic[int(items[0])] = len(nodes)
+            num_of_nodes += len(nodes)
+            dic[int(items[0])] = num_of_nodes
     return dic
 
 
@@ -74,14 +81,16 @@ def p_getOutputEdges():
     has j as key and a list of newly added edges as values.
     """
     dic = {}
-    with open("out_k_200-paths.txt") as output_file:    #for PathLinker
+    num_of_edges = 0
+    with open("outk-200-paths.txt") as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
             path = items[2]#2 for PathLinker output, 3 for DAG output
             nodes = path.split("|")
-            dic[int(items[0])] = len(nodes)//2 + 1
+            num_of_edges += len(nodes)//2 + 1
+            dic[int(items[0])] = num_of_edges
     return dic
 
 def p_getOutput(mode):
@@ -125,11 +134,11 @@ def main(args):
     dic = getOutput(output_file, mode)
     # Doing the above but for PathLinker output
     if pl_flag:
-        p_dic = p_getOutput(pl_output, mode)
+        p_dic = p_getOutput(mode)
 
-    plt.plot(list(dic.key()), list(dic.values()), color = "blue", label = "DAG")
+    plt.plot(list(dic.keys()), list(dic.values()), color = "blue", label = "DAG")
     if pl_flag:
-        plt.plot(list(p_dic.key()), list(p_dic.value()), color = "red", label = "PathLinker")
+        plt.plot(list(p_dic.keys()), list(p_dic.values()), color = "red", label = "PathLinker")
     plt.legend()
     if mode == 'nodes':
         plt.ylabel("# of nodes")
@@ -137,7 +146,7 @@ def main(args):
         plt.ylabel("# of edges")
     plt.xlabel("k")
     plt.suptitle(pathway + " " + mode)
-    plt.savefig(pathway+"-" + mode + "-knum"+save_format)
+    plt.savefig(pathway+"-" + mode +save_format)
     plt.show()
 
 

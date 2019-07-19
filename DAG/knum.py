@@ -67,7 +67,7 @@ def getOutput(output_file, mode):
         return getOutputNodes(output_file)
     return getOutputEdges(output_file)
 
-def p_getOutputNodes():
+def p_getOutputNodes(pl_output):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of nodes as values.
@@ -76,7 +76,7 @@ def p_getOutputNodes():
     dic = {}
     num_of_nodes = 0
     nodesset = set()
-    with open("outk-200-paths.txt") as output_file:    #for PathLinker
+    with open(pl_output) as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
@@ -93,7 +93,7 @@ def p_getOutputNodes():
     return dic
 
 
-def p_getOutputEdges():
+def p_getOutputEdges(pl_output):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of newly added edges as values.
@@ -101,7 +101,7 @@ def p_getOutputEdges():
     dic = {}
     num_of_edges = 0
     edgesset = set()
-    with open("outk-200-paths.txt") as output_file:    #for PathLinker
+    with open(pl_output) as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
@@ -117,7 +117,7 @@ def p_getOutputEdges():
             dic[int(items[0])] = num_of_edges
     return dic
 
-def p_getOutput(mode):
+def p_getOutput(pl_output, mode):
     """
     Wrapper function that calls correct getOutput based on mode
     """
@@ -158,7 +158,7 @@ def main(args):
     dic = getOutput(output_file, mode)
     # Doing the above but for PathLinker output
     if pl_flag:
-        p_dic = p_getOutput(mode)
+        p_dic = p_getOutput(pl_output, mode)
 
     plt.plot(list(dic.keys()), list(dic.values()), color = "blue", label = "DAG")
     if pl_flag:
@@ -169,8 +169,8 @@ def main(args):
     else:
         plt.ylabel("# of edges")
     plt.xlabel("k")
-    plt.suptitle(pathway + " " + mode)
-    plt.savefig(pathway+"-" + mode +save_format)
+    plt.suptitle(pathway + " " + mode+ "-knum")
+    plt.savefig(pathway+"-" + mode +"-knum"+save_format)
     plt.show()
 
 

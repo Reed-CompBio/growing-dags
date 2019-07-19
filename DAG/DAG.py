@@ -22,7 +22,7 @@ def ReadGraph(fileName, pagerank=False):
             continue
         if line[0]=='#':
             continue
-        
+
         items = [x.strip() for x in line.rstrip().split('\t')]
         id1 = items[0]
         id2 = items[1]
@@ -39,18 +39,18 @@ def ReadGraph(fileName, pagerank=False):
                 raise Exception(
                     "ERROR: All edges must have a weight "
                     "unless --PageRank is used. Edge (%s --> %s) does "
-                    "not have a weight entry." % (id1, id2))   
+                    "not have a weight entry." % (id1, id2))
         # Assign the weight. Note in the PageRank case, "weight" is
         # interpreted as running PageRank and edgeflux on a weighted
-        # graph. 
+        # graph.
         net.add_edge(id1, id2, weight=eWeight)
     return net
 
 
 def Creat_s_t(stfileName, G):
     """
-    Takes in a text file including the information of node types and a graph 
-    object G. Creates a node 's' and a node 't'. Connecting all souce nodes in 
+    Takes in a text file including the information of node types and a graph
+    object G. Creates a node 's' and a node 't'. Connecting all souce nodes in
     G with 's' and all target nodes with 't'. Eg: 's'->source, target->'t'.
     """
     infile = open(stfileName, 'r')
@@ -63,14 +63,14 @@ def Creat_s_t(stfileName, G):
         if line[0]=='#':
             continue
         items = [x.strip() for x in line.rstrip().split('\t')]
-        
+
         if items[1] == 'source' or items[1] == 'receptor':
             source = items[0]
             if source in G.nodes():
                 for neighbor in G.predecessors(source):
                     removeedges.append((neighbor, source))
                 addedges.append(('s', source))
-                
+
         if items[1] == 'target' or items[1] == 'tf':
             target = items[0]
             if target in G.nodes():
@@ -80,7 +80,7 @@ def Creat_s_t(stfileName, G):
     result.remove_edges_from(removeedges)
     result.add_edges_from(addedges, weight = 0, log_weight = 0)
     return result
-    
+
 
 def Get_G_0(G_0_name, G):
     """
@@ -95,9 +95,9 @@ def Get_G_0(G_0_name, G):
             continue
         if line[0]=='#':
             continue
-        
+
         items = [x.strip() for x in line.rstrip().split('\t')]
-        
+
         id1 = items[0]
         id2 = items[1]
         if id1 not in path:
@@ -109,19 +109,19 @@ def Get_G_0(G_0_name, G):
     G_0 = nx.edge_subgraph(G, edges)
     pathstring = '|'.join(path)
     return G_0, pathstring
-    
-    
+
+
 def CountUpstream(G, s, t):
     """
     Takes in a graph object, a starting node, and a ending node.
     In the DAG from s to t, this function returns the number of paths from t to
-    each node in the graph. Eg: {s: 5, b: 3}, which means that there are 5 
-    paths from t to s, and 3 paths from t to b. 
+    each node in the graph. Eg: {s: 5, b: 3}, which means that there are 5
+    paths from t to s, and 3 paths from t to b.
     """
     nodes = list(nx.topological_sort(G))
     nodes.reverse()
     upstream = dict()
-    upstream[t] = 1 
+    upstream[t] = 1
     for node in nodes:
         if node not in upstream:
             number = 0
@@ -134,8 +134,8 @@ def CountUpstream(G, s, t):
 def CountDownstream(G, s, t):
     """
     Takes in a graph object, a starting node, and a ending node.
-    In the DAG from s to t, this function returns the number of paths from s to 
-    each node in the graph. Eg: {t: 5, b: 1}, which means that there are 5 
+    In the DAG from s to t, this function returns the number of paths from s to
+    each node in the graph. Eg: {t: 5, b: 1}, which means that there are 5
     paths from s to t, and 1 path from s to b.
     """
     nodes = nx.topological_sort(G)
@@ -153,8 +153,8 @@ def CountDownstream(G, s, t):
 def PathCounter(G, s, t):
     """
     Takes in a graph object, a starting node, and a ending node.
-    In the DAG from s to t, this functions returns the total number that each 
-    edge is used in all the paths from s to t. Eg: {(a,c):2}, which means that 
+    In the DAG from s to t, this functions returns the total number that each
+    edge is used in all the paths from s to t. Eg: {(a,c):2}, which means that
     the edge between a and c is used twice in all the paths from s to t.
     """
     upstream = CountUpstream(G, s, t)
@@ -173,7 +173,7 @@ def GraphCosts(G):
     return G.size('log_weight')
 
 
-def TotalPathsCosts(G, s, t): 
+def TotalPathsCosts(G, s, t):
     """
     Takes in a graph object, a starting node, and a ending node.
     Returns the total weights of all paths in the graph G from s to t.
@@ -189,12 +189,12 @@ def TotalPathsCosts(G, s, t):
 
 def UpdateUpstream(G_0, u, v, upstream, nodes):
     """
-    Takes in a graph object, a pair of ndoes connected  by the imaginary edge, 
+    Takes in a graph object, a pair of ndoes connected  by the imaginary edge,
     the original upstream of G_0, and a list of topologically sorted nodes.
-    Returns a dictionay of updated upstream with adding an imaginary between 
+    Returns a dictionay of updated upstream with adding an imaginary between
     u and v.
     """
-    up = upstream.copy() 
+    up = upstream.copy()
     up[u] = upstream[u] + upstream[v]
     i = nodes.index(u) - 1
     while i >= 0:
@@ -209,9 +209,9 @@ def UpdateUpstream(G_0, u, v, upstream, nodes):
 
 def UpdateDownstream(G_0, u, v, downstream, nodes):
     """
-    Takes in a graph object, a pair of ndoes connected  by the imaginary edge, 
+    Takes in a graph object, a pair of ndoes connected  by the imaginary edge,
     the original downstream of G_0, and a list of topologically sorted nodes.
-    Returns a dictionay of updated downstream with adding an imaginary between 
+    Returns a dictionay of updated downstream with adding an imaginary between
     u and v.
     """
     down = downstream.copy()
@@ -232,15 +232,22 @@ def isConnectedsuc(u, lastpath):
         return True
     suc = u.successors()
     while len(suc) > 0:
-        
-    
+
+
 def isConnectedpre(v, lastpath):
     if not lastpath:
         return True
 """
+
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
+
 def FindNextSubPath(G, G_0, s, t, checked):
     """
-    Takes in a graph G, a DAG G_0, a starting node, a ending node, and a 
+    Takes in a graph G, a DAG G_0, a starting node, a ending node, and a
     dictionary storing shortest paths between pairs of nodes that we've already
     checked. For example: {u:{v:(distance, path)}}.
     Returns the optimal path that minimizes the total costs of all paths of the
@@ -248,33 +255,32 @@ def FindNextSubPath(G, G_0, s, t, checked):
     optimal path in G_0.
     """
     global total_time_in_dij
-    
+
     upstream  = CountUpstream(G_0, s, t)
-    
+
     downstream = CountDownstream(G_0, s, t)
 
-    bestscore = math.inf
+    bestscore = 99999999999999999999999999999999999999999999999
     bestpath = None
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
-                    
-                    
+
+
     for i in range(len(nodes)-1):
         u = nodes[i]
-        print('u node: {}'.format(u))
-        
+
         if u not in newGraph.nodes():
             continue
-        
+
         vset = set(nodes[i+1:])
         vset_copy = copy.deepcopy(vset)
         for v in vset_copy:
             if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
                 vset.remove(v)
-        
+
         vset_copy = copy.deepcopy(vset)
-        
+
         if u in checked.keys():
             for v in vset.copy():
                 if v in checked[u].keys():
@@ -285,16 +291,14 @@ def FindNextSubPath(G, G_0, s, t, checked):
                             vset.remove(v)
         else:
             checked[u] = {}
-            
+
         if len(vset) > 0:
-            print('vest_copy: ', vset_copy)
             start = time.time()
-            checked[u] = {**checked[u], **mt.multi_target_dijkstra(newGraph, u, vset.copy())}
+            checked[u] = merge_two_dicts(checked[u], mt.multi_target_dijkstra(newGraph, u, vset.copy()))
             end = time.time()
             print("Dijkstra took {} seconds".format(end-start))
         for v in vset_copy:
             u_v_dist, u_v_path = checked[u][v]
-            print("dist: {0}, path: {1}".format(u_v_dist, u_v_path))
             '''
             existsInG_0 = False
             for node in u_v_path:
@@ -320,6 +324,60 @@ def FindNextSubPath(G, G_0, s, t, checked):
     print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked
 
+def MinTotalWieghtofEdges(G, G_0, s, t, checked):
+    upstream  = CountUpstream(G_0, s, t)
+
+    downstream = CountDownstream(G_0, s, t)
+
+    bestscore = 99999999999999999999999999999999999999999999999
+    bestpath = None
+    # Find G/G_0.
+    newGraph = getNewGraph(G, G_0)
+    nodes = list(nx.topological_sort(G_0))
+
+    for i in range(len(nodes)-1):
+        u = nodes[i]
+
+        if u not in newGraph.nodes():
+            continue
+
+        vset = set(nodes[i+1:])
+        vset_copy = copy.deepcopy(vset)
+        for v in vset_copy:
+            if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
+                vset.remove(v)
+
+        vset_copy = copy.deepcopy(vset)
+
+        if u in checked.keys():
+            for v in vset.copy():
+                if v in checked[u].keys():
+                    path = checked[u][v][1]
+                    if len(path) > 2:
+                        inG_0 = [node for node in path[1:-1] if node in nodes]
+                        if len(inG_0) == 0:
+                            vset.remove(v)
+        else:
+            checked[u] = {}
+
+        if len(vset) > 0:
+            start = time.time()
+            checked[u] = merge_two_dicts(checked[u], mt.multi_target_dijkstra(newGraph, u, vset.copy()))
+            end = time.time()
+            print("Dijkstra took {} seconds".format(end-start))
+        for v in vset_copy:
+            u_v_dist, u_v_path = checked[u][v]
+            newTotalCost = u_v_dist
+            oldTotalCost = 0
+            for edge in G_0.edges():
+                oldTotalCost += G[edge[0]][edge[1]]['weight']
+            score = newTotalCost + oldTotalCost
+            if score < bestscore:
+                bestscore = score
+                bestpath = u_v_path
+    print("bestpath: {}".format(bestpath))
+    print("bestscore: {}".format(bestscore))
+    return bestscore, bestpath, checked
 
 def logTransformEdgeWeights(net):
     """
@@ -370,17 +428,17 @@ def getNewGraph(G, G_0):
         if edge not in G_0.edges():
             edges.append(edge)
     newGraph = nx.edge_subgraph(G, edges)
-    return newGraph    
-    
-    
-    
+    return newGraph
+
+
+
 def apply(G_name, G_0_name, stfileName, k, out):
     """
-    Takes in two graphs G and G_0. returns a out.txt file containg k paths to 
-    be added to graph G_0 based on G by applying the DAG algorithm. 
+    Takes in two graphs G and G_0. returns a out.txt file containg k paths to
+    be added to graph G_0 based on G by applying the DAG algorithm.
     """
     global total_time_in_dij
-    
+
     out = open(out, 'w')
     out.write('#j\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
     G_original = ReadGraph(G_name)
@@ -391,14 +449,14 @@ def apply(G_name, G_0_name, stfileName, k, out):
     G_0 = Creat_s_t(stfileName, G_0_original)
     checked = {}
     total_time_in_func = 0
-    
-    out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
+
+    out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
                   + str(0)+'\t'+G_0_path + '\n')
-    
+
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
         start = time.time()
-        bestscore, bestpath, checked = FindNextSubPath(G, G_0, 's', 't', checked)
+        bestscore, bestpath, checked = MinTotalWieghtofEdges(G, G_0, 's', 't', checked)
         end = time.time()
         print('#'+str(i), end-start)
         if bestpath == None:
@@ -409,27 +467,27 @@ def apply(G_name, G_0_name, stfileName, k, out):
             print(bestpath)
             print("\n")
             for m in range(0, len(bestpath)-1):
-                G_0.add_edge(bestpath[m], bestpath[m+1], 
-                             weight = G[bestpath[m]][bestpath[m+1]]['weight'], 
+                G_0.add_edge(bestpath[m], bestpath[m+1],
+                             weight = G[bestpath[m]][bestpath[m+1]]['weight'],
                              log_weight = G[bestpath[m]][bestpath[m+1]]['log_weight'])
-            
+
             if bestpath[0] == "s":
                 bestpath = bestpath[1:]
             if bestpath[-1] == "t":
                 bestpath = bestpath[:-1]
             path = "|".join(bestpath)
-                
-        out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t' 
+
+        out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
                   + str(bestscore)+'\t'+path + '\n')
-        
+
         # Stop if there is no path to be added.
         if bestpath == None:
             break
-    print("In FindNextSubPath: {0}".format(total_time_in_func))
+    print("In MinTotalWieghtofEdges: {0}".format(total_time_in_func))
     print("In dijkstra: {0}".format(total_time_in_dij))
     out.close()
 
-    return 
+    return
 
 
 if __name__ == "__main__":
@@ -455,8 +513,6 @@ if __name__ == "__main__":
     #print(G_0.nodes())
     #print(G_0.edges())
     #G_0_original = Get_G_0('G_0.txt', G)
-    
+
     apply('G.txt', 'G_0.txt','nodetypes.txt', 10, 'output.txt')
-    #print(newGraph.edges())
-    #print(nx.dijkstra_path(newGraph, 'a', 't'))
-    
+#print(newGraph.edges())

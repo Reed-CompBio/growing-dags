@@ -15,6 +15,7 @@ def getOutputNodes(output_file):
         """
     dic = {}
     num_of_nodes = 0
+    nodesset = set()
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -22,7 +23,12 @@ def getOutputNodes(output_file):
             items = line.rstrip().split("\t")
             path = items[3]
             nodes = path.split("|")
-            num_of_nodes += len(nodes)
+            newnodeNum = 0
+            for n in nodes:
+                if n not in nodesset:
+                    nodesset.add(n)
+                    newnodeNum += 1
+            num_of_nodes += newnodeNum
             dic[int(items[0])] = num_of_nodes
             
     return dic
@@ -35,6 +41,7 @@ def getOutputEdges(output_file):
         """
     dic = {}
     num_of_edges = 0
+    edgesset = set()
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -42,7 +49,12 @@ def getOutputEdges(output_file):
             items = line.rstrip().split("\t")
             path = items[3]
             nodes = path.split("|")
-            num_of_edges += len(nodes)//2 + 1
+            newedgeNum = 0
+            for i in range(len(nodes)-1):
+                if (nodes[i], nodes[i+1]) not in edgesset:
+                    edgesset.add((nodes[i], nodes[i+1]))
+                    newedgeNum += 1
+            num_of_edges += newedgeNum
             dic[int(items[0])] = num_of_edges
     return dic
 
@@ -63,6 +75,7 @@ def p_getOutputNodes():
     """
     dic = {}
     num_of_nodes = 0
+    nodesset = set()
     with open("outk-200-paths.txt") as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
@@ -70,7 +83,12 @@ def p_getOutputNodes():
             items = line.rstrip().split("\t")
             path = items[2] #2 for PathLinker output
             nodes = path.split("|")
-            num_of_nodes += len(nodes)
+            newnodeNum = 0
+            for n in nodes:
+                if n not in nodesset:
+                    nodesset.add(n)
+                    newnodeNum += 1
+            num_of_nodes += newnodeNum
             dic[int(items[0])] = num_of_nodes
     return dic
 
@@ -82,6 +100,7 @@ def p_getOutputEdges():
     """
     dic = {}
     num_of_edges = 0
+    edgesset = set()
     with open("outk-200-paths.txt") as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
@@ -89,7 +108,12 @@ def p_getOutputEdges():
             items = line.rstrip().split("\t")
             path = items[2]#2 for PathLinker output, 3 for DAG output
             nodes = path.split("|")
-            num_of_edges += len(nodes)//2 + 1
+            newedgeNum = 0
+            for i in range(len(nodes)-1):
+                if (nodes[i], nodes[i+1]) not in edgesset:
+                    edgesset.add((nodes[i], nodes[i+1]))
+                    newedgeNum += 1
+            num_of_edges += newedgeNum
             dic[int(items[0])] = num_of_edges
     return dic
 

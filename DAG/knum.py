@@ -137,7 +137,7 @@ def main(args):
         plt.ylabel("# of edges")
     plt.xlabel("k")
     plt.suptitle(pathway + " " + mode)
-    plt.savefig(pathway+"-" + mode +save_format)
+    plt.savefig(pathway+"-" + mode + "-knum"+save_format)
     plt.show()
 
 

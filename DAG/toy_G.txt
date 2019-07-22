@@ -1,0 +1,14 @@
+#tail	head	edge_weight
+u	a	2
+b	u	5
+c	u	1
+a	v	3
+v	d	2
+a	e	4
+e	g	2
+e	f	6
+g	v	1
+u	v	1
+u	x	3
+x	v	3
+x	c	8

@@ -240,8 +240,11 @@ def isConnectedpre(v, lastpath):
 """
 
 def merge_two_dicts(x, y):
-    z = x.copy()
-    z.update(y)
+    z = x.copy()   # start with x's keys and values
+    for key in y.keys(): # So that old values that has lower weights are preserved
+        value = z.get(key) # Get returns None if key doesn't exist
+        if value is None or value[0] > y[key][0]:
+            z[key] = y[key]
     return z
 
 
@@ -324,11 +327,19 @@ def FindNextSubPath(G, G_0, s, t, checked):
     print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked
 
-def MinTotalWieghtofEdges(G, G_0, s, t, checked):
-    upstream  = CountUpstream(G_0, s, t)
 
-    downstream = CountDownstream(G_0, s, t)
 
+def hasCycles(newGraph, bestpath):
+    test = newGraph.copy()
+    for i in range(len(bestpath) - 1):
+        test.add_edge(bestpath[i], bestpath[i+1])
+    try:
+        nx.find_cycle(test)
+        return True
+    except nx.NetworkXNoCycle:
+        return False
+
+def MinTotalWeightofEdges2(G, G_0, s, t, checked):
     bestscore = 99999999999999999999999999999999999999999999999
     bestpath = None
     # Find G/G_0.
@@ -373,8 +384,53 @@ def MinTotalWieghtofEdges(G, G_0, s, t, checked):
                 oldTotalCost += G[edge[0]][edge[1]]['weight']
             score = newTotalCost + oldTotalCost
             if score < bestscore:
-                bestscore = score
-                bestpath = u_v_path
+                print("Score: ",score)
+                if not hasCycles(newGraph, u_v_path):
+                    bestscore = score
+                    bestpath = u_v_path
+                else:
+                    continue
+    print("bestpath: {}".format(bestpath))
+    print("bestscore: {}".format(bestscore))
+    return bestscore, bestpath, checked
+
+def MinTotalWeightofEdges(G, G_0, s, t, checked):
+    bestscore = 99999999999999999999999999999999999999999999999
+    bestpath = None
+    # Find G/G_0.
+    newGraph = getNewGraph(G, G_0)
+    nodes = list(nx.topological_sort(G_0))
+
+    for i in range(len(nodes)-1):
+        u = nodes[i]
+        if u not in newGraph.nodes():
+            continue
+        for j in range(i+1, len(nodes)):
+            v = nodes[j]
+            if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
+                continue
+            print(u,v)
+            u_v_dist, u_v_path = nx.single_source_dijkstra(newGraph, u, target = v, weight = 'weight')
+            existsInG_0 = False
+            for node in u_v_path:
+                if node == u or node == v:
+                    continue
+                elif node in G_0.nodes:
+                    existsInG_0 = True
+            if existsInG_0:
+                continue
+            newTotalCost = u_v_dist
+            oldTotalCost = 0
+            for edge in G_0.edges():
+                oldTotalCost += G[edge[0]][edge[1]]['weight']
+            score = newTotalCost + oldTotalCost
+            if score < bestscore:
+                print("Score: ",score)
+                if not hasCycles(newGraph, u_v_path):
+                    bestscore = score
+                    bestpath = u_v_path
+                else:
+                    continue
     print("bestpath: {}".format(bestpath))
     print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked
@@ -456,7 +512,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
         start = time.time()
-        bestscore, bestpath, checked = MinTotalWieghtofEdges(G, G_0, 's', 't', checked)
+        bestscore, bestpath, checked = MinTotalWeightofEdges(G, G_0, 's', 't', checked)
         end = time.time()
         print('#'+str(i), end-start)
         if bestpath == None:
@@ -483,7 +539,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
         # Stop if there is no path to be added.
         if bestpath == None:
             break
-    print("In MinTotalWieghtofEdges: {0}".format(total_time_in_func))
+    print("In MinTotalWeightofEdges: {0}".format(total_time_in_func))
     print("In dijkstra: {0}".format(total_time_in_dij))
     out.close()
 

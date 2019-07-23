@@ -1,0 +1,4 @@
+#KitReceptor
+#tail	head
+P10721	Q99704
+Q99704	P00519

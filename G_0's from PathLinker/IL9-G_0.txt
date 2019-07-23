@@ -1,0 +1,5 @@
+#IL9
+#tail	head
+Q01113	Q92993
+Q92993	P40763
+#Only path returned by PathLinker

@@ -1,0 +1,5 @@
+#IL5
+#tail	head
+Q01344	O00560
+O00560	Q06945
+#Note: PathLinker returned only 2 paths for this one

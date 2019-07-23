@@ -1,0 +1,5 @@
+#TCR
+#tail	head
+P07766	-
+-	P42229
+# - is a protein in TCR-nodes.txt

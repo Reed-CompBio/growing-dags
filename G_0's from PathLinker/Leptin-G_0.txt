@@ -1,0 +1,4 @@
+#Leptin
+#tail	head
+P48357	O60674
+O60674	P03372

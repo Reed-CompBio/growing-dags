@@ -1,0 +1,4 @@
+#Notch
+#tail	head
+P46531	Q8IZL2
+Q8IZL2	Q06330

@@ -1,0 +1,4 @@
+#TNFalpha
+#tail	head
+P20333	P19438
+P19438	O14920

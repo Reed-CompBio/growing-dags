@@ -1,0 +1,4 @@
+#RANKL
+#tail	head
+Q9Y6Q6	P12931
+P12931	P00519

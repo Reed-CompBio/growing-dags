@@ -1,0 +1,4 @@
+#TGF_beta_Receptor
+#tail	head
+P36897	O75807
+O75807	O15105

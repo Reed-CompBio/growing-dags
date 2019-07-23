@@ -1,0 +1,5 @@
+#Oncostatin_M
+#tail	head
+P40189	P12931
+P12931	P40763
+#Pathlinker returned only this 3 edge path

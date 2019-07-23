@@ -241,10 +241,7 @@ def isConnectedpre(v, lastpath):
 
 def merge_two_dicts(x, y):
     z = x.copy()   # start with x's keys and values
-    for key in y.keys(): # So that old values that has lower weights are preserved
-        value = z.get(key) # Get returns None if key doesn't exist
-        if value is None or value[0] > y[key][0]:
-            z[key] = y[key]
+    z.update(y)
     return z
 
 
@@ -329,8 +326,8 @@ def FindNextSubPath(G, G_0, s, t, checked):
 
 
 
-def hasCycles(newGraph, bestpath):
-    test = newGraph.copy()
+def hasCycles(G_0, bestpath):
+    test = G_0.copy()
     for i in range(len(bestpath) - 1):
         test.add_edge(bestpath[i], bestpath[i+1])
     try:
@@ -339,7 +336,8 @@ def hasCycles(newGraph, bestpath):
     except nx.NetworkXNoCycle:
         return False
 
-def MinTotalWeightofEdges2(G, G_0, s, t, checked):
+
+def MinTotalWeightofEdges(G, G_0, s, t, checked):
     bestscore = 99999999999999999999999999999999999999999999999
     bestpath = None
     # Find G/G_0.
@@ -348,7 +346,6 @@ def MinTotalWeightofEdges2(G, G_0, s, t, checked):
 
     for i in range(len(nodes)-1):
         u = nodes[i]
-
         if u not in newGraph.nodes():
             continue
 
@@ -375,7 +372,7 @@ def MinTotalWeightofEdges2(G, G_0, s, t, checked):
             start = time.time()
             checked[u] = merge_two_dicts(checked[u], mt.multi_target_dijkstra(newGraph, u, vset.copy()))
             end = time.time()
-            print("Dijkstra took {} seconds".format(end-start))
+            #print("Dijkstra took {} seconds".format(end-start))
         for v in vset_copy:
             u_v_dist, u_v_path = checked[u][v]
             newTotalCost = u_v_dist
@@ -384,89 +381,15 @@ def MinTotalWeightofEdges2(G, G_0, s, t, checked):
                 oldTotalCost += G[edge[0]][edge[1]]['weight']
             score = newTotalCost + oldTotalCost
             if score < bestscore:
-                print("Score: ",score)
-                if not hasCycles(newGraph, u_v_path):
+                if not hasCycles(G_0, u_v_path):
                     bestscore = score
                     bestpath = u_v_path
                 else:
+                    print("Continuing")
                     continue
     print("bestpath: {}".format(bestpath))
     print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked
-
-def MinTotalWeightofEdges(G, G_0, s, t, checked):
-    bestscore = 99999999999999999999999999999999999999999999999
-    bestpath = None
-    # Find G/G_0.
-    newGraph = getNewGraph(G, G_0)
-    nodes = list(nx.topological_sort(G_0))
-
-    for i in range(len(nodes)-1):
-        u = nodes[i]
-        if u not in newGraph.nodes():
-            continue
-        for j in range(i+1, len(nodes)):
-            v = nodes[j]
-            if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
-                continue
-            print(u,v)
-            u_v_dist, u_v_path = nx.single_source_dijkstra(newGraph, u, target = v, weight = 'weight')
-            existsInG_0 = False
-            for node in u_v_path:
-                if node == u or node == v:
-                    continue
-                elif node in G_0.nodes:
-                    existsInG_0 = True
-            if existsInG_0:
-                continue
-            newTotalCost = u_v_dist
-            oldTotalCost = 0
-            for edge in G_0.edges():
-                oldTotalCost += G[edge[0]][edge[1]]['weight']
-            score = newTotalCost + oldTotalCost
-            if score < bestscore:
-                print("Score: ",score)
-                if not hasCycles(newGraph, u_v_path):
-                    bestscore = score
-                    bestpath = u_v_path
-                else:
-                    continue
-    print("bestpath: {}".format(bestpath))
-    print("bestscore: {}".format(bestscore))
-    return bestscore, bestpath, checked
-
-def logTransformEdgeWeights(net):
-    """
-    Apply a negative logarithmic transformation to edge weights,
-    converting multiplicative values (where higher is better) to
-    additive costs (where lower is better).
-    Before the transformation, weights are costs of paths
-    If the weights in the input graph correspond to probabilities,
-    shortest paths in the output graph are maximum-probability paths
-    in the input graph.
-    """
-
-    for u,v in net.edges():
-        w = -math.log(max([0.000000001, net[u][v]['weight']]))/math.log(10)
-        net[u][v]['log_weight'] = w
-    return
-
-
-def undoLogTransformPathLengths(paths):
-    """
-    Undoes the logarithmic transform to path lengths, converting the
-    path lengths back into terms of the original edge weights
-    :param paths: paths to apply the transform to
-    """
-
-    new_paths_list = []
-
-    # Reconstructs the path list with each edge distance un-log transformed.
-    # We build a new list because tuples are unmodifiable.
-    for path in paths:
-        new_path = [(x[0], 10 ** (-1 * x[1])) for x in path]
-        new_paths_list.append(new_path)
-    return new_paths_list
 
 
 def getNewGraph(G, G_0):

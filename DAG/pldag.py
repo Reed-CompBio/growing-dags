@@ -2,6 +2,8 @@ import networkx as nx
 import ksp_Astar as ksp
 from math import log
 
+
+
 def ReadGraph(fileName, pagerank=False):
     """
     This function takes in a string of the name of a text file containing the
@@ -172,12 +174,13 @@ def hasCycles(G_0, bestpath):
 
 def validPath(G_0, path, minNofEdges):
     if hasCycles(G_0, path):
+        print("Has a cycle")
         return False
 
     newEdge = 0
     for i in range(len(path)-1):
         u = path[i][0]
-        v = path[i+1][1]
+        v = path[i+1][0]
         try:
             G_0[u][v]
             continue
@@ -210,18 +213,21 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
 
         if len(paths) == 0:
             paths = ksp.k_shortest_paths_yen(G, "s", "t", k, weight = 'ksp_weight', clip = False)
-        elif pointer == len(paths) - 1:
+        elif pointer_to_next_path == len(paths) - 1:
             k_multiplier += 1
+            print("Refreshing path list with k_m = {}".format(k_multiplier))
             paths = ksp.k_shortest_paths_yen(G, "s", "t", k*k_multiplier, weight = 'ksp_weight', clip = False)
+            print("Computation complete")
 
         path = paths[pointer_to_next_path]
         pointer_to_next_path += 1
 
         if validPath(G_0, path, minNofEdges):
-            print("#i: ", path)
             added_path_counter += 1
+            print("#{}: ".format(added_path_counter), path)
+            print("\n")
             added_paths[added_path_counter] = path  # This is below so that it will start from 1 instead of 0
-            for i in range(len(paths)-1):
+            for i in range(len(path)-1):
                 n1 = path[i][0]
                 n2 = path[i+1][0]
                 log_weight = path[i+1][1] - path[i][1]
@@ -230,17 +236,17 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
 
     with open(out, "w") as of:
         of.write('#j\tpath_weight\tpath\n')
-        for i in range(added_path_counter):
+        for i in range(1, added_path_counter +1):
             path = added_paths[i]
             formatted_path = ""
             for node in path[1:-1]:
-                formatted_path.append(node[0]+"|")
-            formatted_path.rstrip("|")
+                formatted_path += (node[0]+"|")
+            formatted_path = formatted_path[:-1]
             weight = undoLogTransformPathLengths(node)      # Only un-log the last node because it's cumulative
-            of.write(i+"\t"+weight+"\t"+formatted_path+"\n")
+            of.write(str(i)+"\t"+str(weight)+"\t"+formatted_path+"\n")
 
 
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 100, "BCR-pldag-output.txt")
+    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 100, "BCR-pldag-output.txt", 3)

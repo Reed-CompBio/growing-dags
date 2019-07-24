@@ -186,7 +186,7 @@ def validPath(G_0, path, minNofEdges):
         except KeyError:
             newEdge += 1
 
-    if newEdge >= minNofEdges:
+    if newEdge >= minNofEdges or newEdge == len(path)-1:
         return True
     return False
 
@@ -211,7 +211,9 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
     while added_path_counter < k:
 
         if len(paths) == 0:
+            print("Getting initial {} paths".format(k))
             paths = ksp.k_shortest_paths_yen(G, "s", "t", k, weight = 'ksp_weight', clip = False)
+            print("Computation complete")
         elif pointer_to_next_path == len(paths) - 1:
             k_multiplier += 1
             print("Refreshing path list with k_m = {}".format(k_multiplier))
@@ -248,4 +250,4 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 200, "BCR-pldag-output.txt", 3)
+    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 200, "BCR-pldag-output.txt", 5)

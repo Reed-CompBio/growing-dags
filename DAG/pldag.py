@@ -3,7 +3,6 @@ import ksp_Astar as ksp
 from math import log
 
 
-
 def ReadGraph(fileName, pagerank=False):
     """
     This function takes in a string of the name of a text file containing the
@@ -104,7 +103,7 @@ def Creat_s_t(stfileName, G):
                     removeedges.append((target, neighbor))
                 addedges.append((target, 't'))
     result.remove_edges_from(removeedges)
-    result.add_edges_from(addedges, weight = 0, log_weight = 0)
+    result.add_edges_from(addedges, weight = 0, ksp_weight = 0)
     return result
 
 
@@ -199,10 +198,10 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
     """
 
     G_original = ReadGraph(G_name)
+    logTransformEdgeWeights(G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = nx.DiGraph()
-    logTransformEdgeWeights(G)
-
+    
     added_path_counter = 0
     paths = []
     pointer_to_next_path = 0
@@ -249,4 +248,4 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 100, "BCR-pldag-output.txt", 3)
+    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 200, "BCR-pldag-output.txt", 3)

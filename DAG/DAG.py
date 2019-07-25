@@ -78,7 +78,7 @@ def Creat_s_t(stfileName, G):
                     removeedges.append((target, neighbor))
                 addedges.append((target, 't'))
     result.remove_edges_from(removeedges)
-    result.add_edges_from(addedges, weight = 0, log_weight = 0)
+    result.add_edges_from(addedges, weight = 0)
     return result
 
 
@@ -170,7 +170,7 @@ def GraphCosts(G):
     Takes in a graph object, a starting node, and a ending node.
     Returns the total weights of edges in the graph G from s to t.
     """
-    return G.size('log_weight')
+    return G.size('weight')
 
 
 def TotalPathsCosts(G, s, t):
@@ -232,8 +232,6 @@ def isConnectedsuc(u, lastpath):
         return True
     suc = u.successors()
     while len(suc) > 0:
-
-
 def isConnectedpre(v, lastpath):
     if not lastpath:
         return True
@@ -245,7 +243,7 @@ def merge_two_dicts(x, y):
     return z
 
 
-def FindNextSubPath(G, G_0, s, t, checked):
+def FindNextSubPath(G, G_0, s, t, checked,G_0_weight):
     """
     Takes in a graph G, a DAG G_0, a starting node, a ending node, and a
     dictionary storing shortest paths between pairs of nodes that we've already
@@ -322,7 +320,7 @@ def FindNextSubPath(G, G_0, s, t, checked):
                 bestpath = u_v_path
     print("bestpath: {}".format(bestpath))
     print("bestscore: {}".format(bestscore))
-    return bestscore, bestpath, checked
+    return bestscore, bestpath, checked,G_0_weight
 
 
 
@@ -337,7 +335,7 @@ def hasCycles(G_0, bestpath):
         return False
 
 
-def MinTotalWeightofEdges(G, G_0, s, t, checked):
+def MinTotalWeightofEdges(G, G_0, s, t, checked,G_0_weight):
     bestscore = 99999999999999999999999999999999999999999999999
     bestpath = None
     # Find G/G_0.
@@ -369,9 +367,7 @@ def MinTotalWeightofEdges(G, G_0, s, t, checked):
             checked[u] = {}
 
         if len(vset) > 0:
-            start = time.time()
             checked[u] = merge_two_dicts(checked[u], mt.multi_target_dijkstra(newGraph, u, vset.copy()))
-            end = time.time()
             #print("Dijkstra took {} seconds".format(end-start))
         for v in vset_copy:
             u_v_dist, u_v_path = checked[u][v]
@@ -380,6 +376,7 @@ def MinTotalWeightofEdges(G, G_0, s, t, checked):
             for edge in G_0.edges():
                 oldTotalCost += G[edge[0]][edge[1]]['weight']
             score = newTotalCost + oldTotalCost
+            
             if score < bestscore:
                 if not hasCycles(G_0, u_v_path):
                     bestscore = score
@@ -389,7 +386,70 @@ def MinTotalWeightofEdges(G, G_0, s, t, checked):
                     continue
     print("bestpath: {}".format(bestpath))
     print("bestscore: {}".format(bestscore))
-    return bestscore, bestpath, checked
+    return bestscore, bestpath, checked,G_0_weight
+
+def MinAverageWeightstoPaths(G, G_0, s, t, checked, G_0_weight):
+    
+    upstream  = CountUpstream(G_0, s, t)
+
+    downstream = CountDownstream(G_0, s, t)
+
+    bestscore = 99999999999999999999999999999999999999999999999
+    bestpath = None
+    # Find G/G_0.
+    newGraph = getNewGraph(G, G_0)
+    nodes = list(nx.topological_sort(G_0))
+
+
+    for i in range(len(nodes)-1):
+        u = nodes[i]
+
+        if u not in newGraph.nodes():
+            continue
+
+        vset = set(nodes[i+1:])
+        vset_copy = copy.deepcopy(vset)
+        for v in vset_copy:
+            if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
+                vset.remove(v)
+        vset_copy = copy.deepcopy(vset)
+        if u in checked.keys():
+            for v in vset.copy():
+                if v in checked[u].keys():
+                    path = checked[u][v][1]
+                    if len(path) > 2:
+                        inG_0 = [node for node in path[1:-1] if node in nodes]
+                        if len(inG_0) == 0:
+                            vset.remove(v)
+        else:
+            checked[u] = {}
+
+        if len(vset) > 0:
+            checked[u] = merge_two_dicts(checked[u], mt.multi_target_dijkstra(newGraph, u, vset.copy()))
+
+        for v in vset_copy:
+            u_v_dist, u_v_path = checked[u][v]
+                
+            up = UpdateUpstream(G_0, u, v, upstream, nodes)
+            down = UpdateDownstream(G_0, u, v, downstream, nodes)
+            newTotalCost = up[v] * down[u] * u_v_dist
+            oldTotalCost = 0
+            for edge in G_0.edges():
+                oldTotalCost += up[edge[1]] * down[edge[0]] * G[edge[0]][edge[1]]['weight']
+            new_G_0_weight = newTotalCost + oldTotalCost
+            weight_diff = new_G_0_weight - G_0_weight
+            path_num_diff = up['s'] - upstream['s']
+            score = weight_diff/path_num_diff
+            if score < bestscore:
+                potential_G_weight = new_G_0_weight
+                bestscore = score
+                bestpath = u_v_path
+                
+    
+    print("bestpath: {}".format(bestpath))
+    print("bestscore: {}".format(bestscore))
+    return bestscore, bestpath, checked, potential_G_weight
+
 
 
 def getNewGraph(G, G_0):
@@ -419,15 +479,17 @@ def apply(G_name, G_0_name, stfileName, k, out):
     global total_time_in_dij
 
     out = open(out, 'w')
-    out.write('#j\ttotal_path_costs\ttotal_path_log_costs\tpath\n')
+    out.write('#j\ttotal_path_costs\tpath\n')
     G_original = ReadGraph(G_name)
     # Set log_weights to edges of G
-    logTransformEdgeWeights(G_original)
     G_0_original, G_0_path = Get_G_0(G_0_name, G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = Creat_s_t(stfileName, G_0_original)
     checked = {}
     total_time_in_func = 0
+    G_0_weight = 0
+    for edge in G_0.edges():
+        G_0_weight += G_0[edge[0]][edge[1]]['weight']
 
     out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
                   + str(0)+'\t'+G_0_path + '\n')
@@ -435,20 +497,19 @@ def apply(G_name, G_0_name, stfileName, k, out):
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
         start = time.time()
-        bestscore, bestpath, checked = MinTotalWeightofEdges(G, G_0, 's', 't', checked)
+        bestscore, bestpath, checked, G_0_weight =  MinAverageWeightstoPaths(G, G_0, 's', 't', checked, G_0_weight)
         end = time.time()
         print('#'+str(i), end-start)
         if bestpath == None:
             path = 'None'
-            bestscore = -1
         else:
             print("bestpath:")
             print(bestpath)
             print("\n")
             for m in range(0, len(bestpath)-1):
                 G_0.add_edge(bestpath[m], bestpath[m+1],
-                             weight = G[bestpath[m]][bestpath[m+1]]['weight'],
-                             log_weight = G[bestpath[m]][bestpath[m+1]]['log_weight'])
+                             weight = G[bestpath[m]][bestpath[m+1]]['weight'])
+                             
 
             if bestpath[0] == "s":
                 bestpath = bestpath[1:]
@@ -457,7 +518,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
             path = "|".join(bestpath)
 
         out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
-                  + str(bestscore)+'\t'+path + '\n')
+                  +path + '\n')
 
         # Stop if there is no path to be added.
         if bestpath == None:
@@ -467,6 +528,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
     out.close()
 
     return
+
 
 
 if __name__ == "__main__":
@@ -493,5 +555,5 @@ if __name__ == "__main__":
     #print(G_0.edges())
     #G_0_original = Get_G_0('G_0.txt', G)
 
-    apply('G.txt', 'G_0.txt','nodetypes.txt', 10, 'output.txt')
-#print(newGraph.edges())
+    apply('toy_G.txt', 'toy_G_0.txt','toy_nodes.txt', 10, 'toy_output.txt')
+    #print(newGraph.edges())

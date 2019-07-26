@@ -191,11 +191,13 @@ def validPath(G_0, path, minNofEdges):
     return False
 
 
-def apply(G_name, stfileName, k, out, minNofEdges = 1):
+def apply(G_name, stfileName, k, out, minNofEdges = 1, clip = False):
     """
     Takes in two graphs G and G_0. returns a out.txt file containg k paths to
     be added to graph G_0 based on G by applying the DAG algorithm.
     """
+    print("PL-DAG called with k = {}, min_edges = {}, clip = {}".format(k, minNofEdges, clip))
+    print("Target = ", stfileName)
 
     G_original = ReadGraph(G_name)
     logTransformEdgeWeights(G_original)
@@ -212,14 +214,15 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
 
         if len(paths) == 0:
             print("Getting initial {} paths".format(k))
-            paths = ksp.k_shortest_paths_yen(G, "s", "t", k, weight = 'ksp_weight', clip = False)
+            paths = ksp.k_shortest_paths_yen(G, "s", "t", k, weight = 'ksp_weight', clip = clip)
             print("Computation complete")
-        elif pointer_to_next_path == len(paths) - 1:
-            k_multiplier += 1
+        elif pointer_to_next_path == len(paths):
+            k_multiplier = (len(paths) // k) + 1
             print("Refreshing path list with k_m = {}".format(k_multiplier))
-            paths = ksp.k_shortest_paths_yen(G, "s", "t", k*k_multiplier, weight = 'ksp_weight', clip = False)
+            paths = ksp.k_shortest_paths_yen(G, "s", "t", k*k_multiplier, weight = 'ksp_weight', clip = clip)
             print("Computation complete")
 
+        print(pointer_to_next_path, " / ", len(paths))
         path = paths[pointer_to_next_path]
         pointer_to_next_path += 1
 
@@ -250,4 +253,4 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1):
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 200, "BCR-pldag-output.txt", 5)
+    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 1500, "BCR-pldag-output.txt", 2, clip = False)

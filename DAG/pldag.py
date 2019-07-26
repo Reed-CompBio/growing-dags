@@ -1,6 +1,7 @@
 import networkx as nx
 import ksp_Astar_n2 as ksp
 from math import log
+import datetime
 
 
 def ReadGraph(fileName, pagerank=False):
@@ -43,33 +44,6 @@ def ReadGraph(fileName, pagerank=False):
     return net
 
 
-def Get_G_0(G_0_name, G):
-    """
-    Takes in a text file of G_0 and a graph object G.
-    Returns a graph object G_0.
-    """
-    edges = []
-    infile = open(G_0_name, 'r')
-    path = []
-    for line in infile:
-        if line=='\n':
-            continue
-        if line[0]=='#':
-            continue
-
-        items = [x.strip() for x in line.rstrip().split('\t')]
-
-        id1 = items[0]
-        id2 = items[1]
-        if id1 not in path:
-            path.append(id1)
-        path.append(id2)
-        edge = (id1, id2)
-        if edge in G.edges():
-            edges.append(edge)
-    G_0 = nx.edge_subgraph(G, edges)
-    pathstring = '|'.join(path)
-    return G_0, pathstring
 
 
 def Creat_s_t(stfileName, G):
@@ -105,24 +79,6 @@ def Creat_s_t(stfileName, G):
     result.remove_edges_from(removeedges)
     result.add_edges_from(addedges, weight = 0, ksp_weight = 0)
     return result
-
-
-def getNewGraph(G, G_0):
-    """
-    Takes in Two Graphs G and G_0, returns a new graph G/G_0.
-    """
-    '''
-    newGraph = nx.DiGraph()
-    for edge in G.edges():
-        if edge not in G_0.edges():
-            newGraph.add_edge(edge[0], edge[1], weight=G[edge[0]][edge[1]]['weight'])
-    '''
-    edges = []
-    for edge in G.edges():
-        if edge not in G_0.edges():
-            edges.append(edge)
-    newGraph = nx.edge_subgraph(G, edges)
-    return newGraph
 
 
 def logTransformEdgeWeights(net):
@@ -238,6 +194,8 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1, clip = False):
                 G_0.add_edge(n1, n2, ksp_weight = log_weight)
 
 
+    
+    out = out[:out.find(".")] + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".txt"
     with open(out, "w") as of:
         of.write('#j\tpath_weight\tpath\n')
         for i in range(1, added_path_counter +1):
@@ -253,4 +211,4 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1, clip = False):
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 15, "BCR-pldag-output.txt", 2, clip = False)
+    apply("2015pathlinker-weighted.txt", 'BCR-nodes.txt', 1500, "BCR-pldag-output.txt", 1, clip = False)

@@ -1,5 +1,5 @@
 import networkx as nx
-import ksp_Astar as ksp
+import ksp_Astar_n2 as ksp
 from math import log
 
 
@@ -220,7 +220,7 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1, clip = False):
             k_multiplier = (len(paths) // k) + 1
             print("Refreshing path list with k_m = {}".format(k_multiplier))
             paths = ksp.k_shortest_paths_yen(G, "s", "t", k*k_multiplier, weight = 'ksp_weight', clip = clip)
-            print("Computation complete")
+            print("Computation complete with {} paths".format(len(paths)))
 
         print(pointer_to_next_path, " / ", len(paths))
         path = paths[pointer_to_next_path]
@@ -253,4 +253,4 @@ def apply(G_name, stfileName, k, out, minNofEdges = 1, clip = False):
     return
 
 if __name__ == "__main__":
-    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 1500, "BCR-pldag-output.txt", 2, clip = False)
+    apply("2015pathlinker-weighted.txt", 'NetPath_Pathways/BCR-nodes.txt', 15, "BCR-pldag-output.txt", 2, clip = False)

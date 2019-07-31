@@ -8,11 +8,18 @@ def hasCycles(G_0, bestpath):
     test = G_0.copy()
     for i in range(len(bestpath) - 1):
         test.add_edge(bestpath[i], bestpath[i+1])
+    cycles = list(nx.simple_cycles(test))
+    if len(cycles) == 0:
+        return False
+    return True
+        
+    """    
     try:
         nx.find_cycle(test)
         return True
     except nx.NetworkXNoCycle:
         return False
+    """
 
 
 def validPath(G_0, path, minNofEdges, stats):
@@ -21,7 +28,6 @@ def validPath(G_0, path, minNofEdges, stats):
     if hasCycles(G_0, path):
         stats[2] += 1
         print("Has a cycle")
-        
         return False
 
     newEdge = 0
@@ -59,6 +65,19 @@ def apply(args):
     minNofEdges = 1
     if len(args) > 3:
         minNofEdges = int(args[3])
+    node_file = args[4]
+    
+    receptors = set()
+    tfs = set()
+    with open(node_file) as f:
+        for line in f:
+            if line == "\n" or line[0] == "#":
+                continue
+            items = line.rstrip().split("\t")
+            if items[1] == "tf":
+                tfs.add(items[0])
+            elif items[1] == "receptor":
+                receptors.add(items[0])
      
     print("PL-DAG called with k = {}, min_edges = {} on {}".format(k, minNofEdges, path_file))
     G_0 = nx.DiGraph()
@@ -75,6 +94,7 @@ def apply(args):
 
     with open(path_file) as rf, open(outfile_name, "w") as wf:
         wf.write("#j\tpath_weight\tpath\n")
+        wf.write("#{}\n".format(path_file))
                  
         for line in rf:
             if line == "\n" or line[0] == "#":
@@ -88,7 +108,17 @@ def apply(args):
                 print("\n")
                 for i in range(len(path)-1):
                     n1 = path[i]
+                    if n1 in receptors:
+                        print("RECEPTOR ADDED HERE")
+                        receptors.remove(n1)
+                        if len(receptors) == 0:
+                            print("RECEPTORS END HERE")
                     n2 = path[i+1]
+                    if n2 in tfs:
+                        print("TFs ADDED HERE")
+                        tfs.remove(n2)
+                        if len(tfs) == 0:
+                            print("TFs end here")
                     G_0.add_edge(n1, n2)
                 wf.write("{0}\t{1}\t{2}\n".format(added_path_counter, items[1], "|".join(path)))
                 if added_path_counter == k:

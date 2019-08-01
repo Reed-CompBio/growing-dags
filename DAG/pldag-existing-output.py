@@ -66,6 +66,9 @@ def apply(args):
     if len(args) > 3:
         minNofEdges = int(args[3])
     node_file = args[4]
+    change = 0
+    if len(args) > 5:
+        change = int(args[5])
     
     receptors = set()
     tfs = set()
@@ -90,7 +93,8 @@ def apply(args):
     #number_of_rejected_paths_cycle = 0       2 in stats
     #number_of_rejected_paths_minNofEdges = 0 3 in stats
     stats = {1:0, 2:0, 3:0}
-
+    j_track = 0
+    trackflag = True
 
     with open(path_file) as rf, open(outfile_name, "w") as wf:
         wf.write("#j\tpath_weight\tpath\n")
@@ -108,6 +112,10 @@ def apply(args):
                 print("\n")
                 for i in range(len(path)-1):
                     n1 = path[i]
+                    if trackflag and len(receptors) == 0 and len(tfs) == 0:
+                        minNofEdges += change
+                        j_track = added_path_counter
+                        trackflag = False
                     if n1 in receptors:
                         print("RECEPTOR ADDED HERE")
                         receptors.remove(n1)
@@ -133,6 +141,7 @@ def apply(args):
     print("{} paths were evaluated.".format(stats[1]))
     print("{} of them were rejected due to cycles.".format(stats[2]))
     print("{} of them didn't have enough number of new edges".format(stats[3]))
+    print("Change of the min edge happends at j = {}".format(j_track))
     
     return
 

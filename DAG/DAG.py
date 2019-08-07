@@ -3,6 +3,7 @@ import math
 import time
 import multi_target_dijkstra as mt
 import copy
+import sys
 
 total_time_in_dij = 0
 lastpath = None
@@ -90,6 +91,7 @@ def Get_G_0(G_0_name, G):
     edges = []
     infile = open(G_0_name, 'r')
     path = []
+    ancestors = {'s':set(), "t":set()}
     for line in infile:
         if line=='\n':
             continue
@@ -107,8 +109,13 @@ def Get_G_0(G_0_name, G):
         if edge in G.edges():
             edges.append(edge)
     G_0 = nx.edge_subgraph(G, edges)
+    prevnodes = set("s")
+    for node in list(nx.topological_sort(G_0)):
+        ancestors[node] = prevnodes.copy()
+        prevnodes.add(node)
+    ancestors["t"] = prevnodes.copy()
     pathstring = '|'.join(path)
-    return G_0, pathstring
+    return G_0, pathstring, ancestors
 
 
 def CountUpstream(G, s, t):
@@ -243,7 +250,7 @@ def merge_two_dicts(x, y):
     return z
 
 
-def FindNextSubPath(G, G_0, s, t, checked,G_0_weight):
+def FindNextSubPath(G, G_0, s, t, checked,G_0_weight, ancestors):
     """
     Takes in a graph G, a DAG G_0, a starting node, a ending node, and a
     dictionary storing shortest paths between pairs of nodes that we've already
@@ -262,16 +269,13 @@ def FindNextSubPath(G, G_0, s, t, checked,G_0_weight):
     bestpath = None
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
-    nodes = list(nx.topological_sort(G_0))
-
-
-    for i in range(len(nodes)-1):
-        u = nodes[i]
-
+    nodes  = list(nx.topological_sort(G_0))
+    for u in G_0.nodes():
+        
         if u not in newGraph.nodes():
             continue
-
-        vset = set(nodes[i+1:])
+        vset = set(G_0.nodes()) - ancestors[u]
+        vset.remove(u)
         vset_copy = copy.deepcopy(vset)
         for v in vset_copy:
             if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
@@ -284,7 +288,7 @@ def FindNextSubPath(G, G_0, s, t, checked,G_0_weight):
                 if v in checked[u].keys():
                     path = checked[u][v][1]
                     if len(path) > 2:
-                        inG_0 = [node for node in path[1:-1] if node in nodes]
+                        inG_0 = [node for node in path[1:-1] if node in G_0.nodes()]
                         if len(inG_0) == 0:
                             vset.remove(v)
         else:
@@ -320,7 +324,7 @@ def FindNextSubPath(G, G_0, s, t, checked,G_0_weight):
                 bestpath = u_v_path
     print("bestpath: {}".format(bestpath))
     print("bestscore: {}".format(bestscore))
-    return bestscore, bestpath, checked,G_0_weight
+    return bestscore, bestpath, checked, G_0_weight
 
 
 
@@ -335,19 +339,19 @@ def hasCycles(G_0, bestpath):
         return False
 
 
-def MinTotalWeightofEdges(G, G_0, s, t, checked,G_0_weight):
+def MinTotalWeightofEdges(G, G_0, s, t, checked, G_0_weight, ancestors):
     bestscore = 99999999999999999999999999999999999999999999999
     bestpath = None
     # Find G/G_0.
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
 
-    for i in range(len(nodes)-1):
-        u = nodes[i]
+    for u in G_0.nodes():
+        
         if u not in newGraph.nodes():
             continue
-
-        vset = set(nodes[i+1:])
+        vset = set(G_0.nodes()) - ancestors[u]
+        vset.remove(u)
         vset_copy = copy.deepcopy(vset)
         for v in vset_copy:
             if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
@@ -388,7 +392,7 @@ def MinTotalWeightofEdges(G, G_0, s, t, checked,G_0_weight):
     print("bestscore: {}".format(bestscore))
     return bestscore, bestpath, checked,G_0_weight
 
-def MinAverageWeightstoPaths(G, G_0, s, t, checked, G_0_weight):
+def MinAverageWeightstoPaths(G, G_0, s, t, checked, G_0_weight, ancestors):
     
     upstream  = CountUpstream(G_0, s, t)
 
@@ -400,14 +404,15 @@ def MinAverageWeightstoPaths(G, G_0, s, t, checked, G_0_weight):
     newGraph = getNewGraph(G, G_0)
     nodes = list(nx.topological_sort(G_0))
 
-
+    potential_G_weight = 0
     for i in range(len(nodes)-1):
         u = nodes[i]
 
         if u not in newGraph.nodes():
             continue
 
-        vset = set(nodes[i+1:])
+        vset = set(G_0.nodes()) - ancestors[u]
+        vset.remove(u)
         vset_copy = copy.deepcopy(vset)
         for v in vset_copy:
             if v not in newGraph.nodes() or not nx.has_path(newGraph, u, v):
@@ -451,7 +456,6 @@ def MinAverageWeightstoPaths(G, G_0, s, t, checked, G_0_weight):
     return bestscore, bestpath, checked, potential_G_weight
 
 
-
 def getNewGraph(G, G_0):
     """
     Takes in Two Graphs G and G_0, returns a new graph G/G_0.
@@ -469,7 +473,17 @@ def getNewGraph(G, G_0):
     newGraph = nx.edge_subgraph(G, edges)
     return newGraph
 
-
+def addEdgeAndAncestors(G_0, G, bestpath, ancestors):
+    for m in range(0, len(bestpath)-1):
+        G_0.add_edge(bestpath[m], bestpath[m+1],
+                    weight = G[bestpath[m]][bestpath[m+1]]['weight'])
+        if m != 0:
+            ancestors[bestpath[m]].update(bestpath[:m])
+            
+def updateAncestors(G_0, ancestors, start):
+    for des in G_0.successors(start):
+        ancestors[des] |= ancestors[start] 
+        updateAncestors(G_0, ancestors, des)                  
 
 def apply(G_name, G_0_name, stfileName, k, out):
     """
@@ -482,7 +496,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
     out.write('#j\ttotal_path_costs\tpath\n')
     G_original = ReadGraph(G_name)
     # Set log_weights to edges of G
-    G_0_original, G_0_path = Get_G_0(G_0_name, G_original)
+    G_0_original, G_0_path, ancestors = Get_G_0(G_0_name, G_original)
     G = Creat_s_t(stfileName, G_original)
     G_0 = Creat_s_t(stfileName, G_0_original)
     checked = {}
@@ -491,13 +505,12 @@ def apply(G_name, G_0_name, stfileName, k, out):
     for edge in G_0.edges():
         G_0_weight += G_0[edge[0]][edge[1]]['weight']
 
-    out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
-                  + str(0)+'\t'+G_0_path + '\n')
+    out.write(str(0)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) +'\t'+G_0_path + '\n')
 
     # keeps track of the sum of all paths in the graph.
     for i in range(1,k+1):
         start = time.time()
-        bestscore, bestpath, checked, G_0_weight =  MinAverageWeightstoPaths(G, G_0, 's', 't', checked, G_0_weight)
+        bestscore, bestpath, checked, G_0_weight = FindNextSubPath(G, G_0, 's', 't', checked, G_0_weight, ancestors)
         end = time.time()
         print('#'+str(i), end-start)
         if bestpath == None:
@@ -506,17 +519,22 @@ def apply(G_name, G_0_name, stfileName, k, out):
             print("bestpath:")
             print(bestpath)
             print("\n")
+            
             for m in range(0, len(bestpath)-1):
                 G_0.add_edge(bestpath[m], bestpath[m+1],
-                             weight = G[bestpath[m]][bestpath[m+1]]['weight'])
-                             
-
+                             weight = G[bestpath[m]][bestpath[m+1]]['weight'])   
+                prev_ancestors = ancestors[bestpath[m]]
+                if bestpath[m+1] not in ancestors.keys():
+                    ancestors[bestpath[m+1]] = set()
+                ancestors[bestpath[m+1]].update(prev_ancestors)
+                ancestors[bestpath[m+1]].add(bestpath[m])
+            updateAncestors(G_0, ancestors, bestpath[-1])
             if bestpath[0] == "s":
                 bestpath = bestpath[1:]
             if bestpath[-1] == "t":
                 bestpath = bestpath[:-1]
             path = "|".join(bestpath)
-
+            
         out.write(str(i)+'\t'+str(TotalPathsCosts(G_0, 's', 't')) + '\t'
                   +path + '\n')
 
@@ -526,7 +544,7 @@ def apply(G_name, G_0_name, stfileName, k, out):
     print("In MinTotalWeightofEdges: {0}".format(total_time_in_func))
     print("In dijkstra: {0}".format(total_time_in_dij))
     out.close()
-
+    print(list(nx.topological_sort(G_0)))
     return
 
 
@@ -554,6 +572,6 @@ if __name__ == "__main__":
     #print(G_0.nodes())
     #print(G_0.edges())
     #G_0_original = Get_G_0('G_0.txt', G)
-
-    apply('toy_G.txt', 'toy_G_0.txt','toy_nodes.txt', 10, 'toy_output.txt')
+    apply('2015pathlinker-weighted.txt', 'NetPath_Pathways/Wnt-G_0.txt','NetPath_Pathways/Wnt-nodes.txt', 200, 'NetPath_Pathways/Wnt-induced-cost2-output.txt')
+    #apply('toy_G.txt', 'toy_G_0.txt','toy_nodes.txt', 15, 'toy_output.txt')
     #print(newGraph.edges())

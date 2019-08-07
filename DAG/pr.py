@@ -5,6 +5,7 @@ WILL RETURN FILENOTFOUNDERROR in getPositives if the input file name is not
 
 import sys
 import matplotlib.pyplot as plt
+import datetime
 
 
 def precision(dic, pos):
@@ -17,7 +18,14 @@ def precision(dic, pos):
                 already_seen.add(item)
                 if item in pos:
                     positives_so_far += 1
-        prec.append(positives_so_far/len(already_seen))
+                elif type(item) is tuple:
+                    if (item[1], item[0]) in pos:
+                        print("Here with {0} and {1}".format(item, (item[1], item[0])))
+                        positives_so_far += 1
+        try:
+            prec.append(positives_so_far/len(already_seen))
+        except ZeroDivisionError:
+            prec.append(0)
     return prec
     
 
@@ -32,13 +40,48 @@ def recall(dic, pos):
                 if item not in already_pos:
                     positives_so_far += 1
                     already_pos.add(item)
+            elif type(item) is tuple:
+                if (item[1], item[0]) in pos:
+                    if (item[1], item[0]) not in already_pos:
+                        print("Here with {0} and {1}".format(item, (item[1], item[0])))
+                        positives_so_far += 1
+                        already_pos.add((item[1], item[0]))
         rec.append(positives_so_far/total_positives)
     return rec
 
 
+def getItems(row, already_seen):
+    line = ""
+    if type(row[0]) is tuple:
+        for item in row:
+            if item not in already_seen:
+                line += "({},{}), ".format(item[0], item[1])
+                already_seen.add(item)
+    else:
+        for item in row:
+            if item not in already_seen:
+                line += "{}, ".format(item)
+                already_seen.add(item)
+    line = line[:-2] + "\t"
+    return line
+
 def pr(dic, pos):
     prec = precision(dic, pos)
     rec = recall(dic, pos)
+    outfile_name = "pr_out_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".txt"
+    counter = 0
+    already_seen = set()
+    with open(outfile_name, "w") as f:
+        if len(dic[1][0]) == 1:
+            f.write("#j\tnode\tprecision\trecall\n")
+        else:
+            f.write("#j\ttail\thead\tprecision\trecall\n")
+
+        for row in dic.values():
+            line = "{}\t".format(counter+1) + getItems(row, already_seen)
+            line += "{}\t{}\n".format(prec[counter], rec[counter])
+            counter += 1
+            f.write(line)
     return prec, rec
 
 
@@ -92,7 +135,7 @@ def getOutputNodes(output_file):
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
-            path = items[3]
+            path = items[2]
             nodes = path.split("|")
             dic[int(items[0])] = nodes
     return dic
@@ -109,7 +152,7 @@ def getOutputEdges(output_file):
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
-            path = items[3]
+            path = items[2]
             nodes = path.split("|")
             edges = []
             for i in range(len(nodes)-1):
@@ -127,14 +170,14 @@ def getOutput(output_file, mode):
     return getOutputEdges(output_file)
 
 
-def p_getOutputNodes():
+def p_getOutputNodes(pl_output):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of nodes as values.
     IMPORTANT: nodes are NOT guaranteed to be unique and will repeat
     """
     dic = {}
-    with open("out_k_100-paths.txt") as output_file:    #for PathLinker
+    with open(pl_output) as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
@@ -145,13 +188,13 @@ def p_getOutputNodes():
     return dic
 
 
-def p_getOutputEdges():
+def p_getOutputEdges(pl_output):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of newly added edges as values.
     """
     dic = {}
-    with open("out_k_100-paths.txt") as output_file:    #for PathLinker
+    with open(pl_output) as output_file:    #for PathLinker
         for line in output_file:
             if line == "\n" or line[0] == "#":
                 continue
@@ -164,13 +207,13 @@ def p_getOutputEdges():
             dic[int(items[0])] = edges
     return dic
 
-def p_getOutput(mode):
+def p_getOutput(pl_output, mode):
     """
     Wrapper function that calls correct getOutput based on mode
     """
     if mode == "nodes":
-        return p_getOutputNodes()
-    return p_getOutputEdges()
+        return p_getOutputNodes(pl_output)
+    return p_getOutputEdges(pl_output)
 
 
 def main(args):
@@ -222,7 +265,9 @@ def main(args):
     plt.ylabel("Precision")
     plt.xlabel("Recall")
     plt.suptitle(pathway + " " + mode)
-    plt.savefig(pathway+"-" + mode +save_format)
+    name = pathway+"-pldag-" + mode +save_format
+    print("Saving with filename ", name)
+    plt.savefig(name)
     plt.show()
     
 

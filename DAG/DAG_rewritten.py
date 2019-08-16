@@ -270,10 +270,16 @@ def multi_target_dijkstra(G, u, vset):
     finished = {}  # node -> (dist, path)
     seen = {}  # node -> dist
 
+    # In case old math module
+    try:
+        inf = math.inf
+    except AttributeError:
+        inf = 99999999999999
+
     # Create priority queue entries for each node
     for item in G.nodes():
         path = None
-        dist = math.inf
+        dist = inf
         # Starting node
         if item == u:
             path = [u]

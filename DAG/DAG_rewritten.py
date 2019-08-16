@@ -613,8 +613,8 @@ def main(args):
                         help="If G_file contains interaction costs (lower is better) instead of probabilities"
                              "(higher is better), this option should be used.")
 
-    parser.add_argument("--cost-function", type=int, choices=[1, 2], default=2,
-                        help="Choice of cost function. (default=2)"
+    parser.add_argument("--cost-function", type=int, choices=COST_FUNCTIONS.keys(), default=2,
+                        help="Choice of cost function. (default=2)\n"
                              "1-Minimize the total cost of all edges(Dijkstra)."
                              "2-Minimize the total cost of all paths(Dijkstra)."
                              "3-Minimize the total cost of all paths(Floyd-Warshall).")

@@ -366,66 +366,6 @@ def costFunction1(G, G_0, ancestors):
     return bestscore, bestpath
 
 
-def floydWarshall(G, G_0, ancestor):
-    """
-    This is the same cost function as costFunction2, but paths are obtained using Floyd-Warshall algorithm.
-    ancestor argument is redundant. It is here to keep all the arguments for all cost functions consistent.
-    """
-
-    # Obtain the number of paths from node to s/t in G_0
-    n_paths_to_sink = CountPathsToSink(G_0)
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
-    # It is here otherwise it will be called twice for every edge.
-    nodes = list(nx.topological_sort(G_0))
-
-    # Initialize best score as a big number
-    try:
-        bestscore = math.inf
-    # In case old math module
-    except AttributeError:
-        bestscore = 99999999999999999999
-    bestpath = None
-
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    start = time.time()
-    predecessors, distance = nx.floyd_warshall_predecessor_and_distance(G_delta, weight="cost")
-    end = time.time()
-    print("Floyd-Warshall took {} seconds.".format(end-start))
-
-    for u in G_0.nodes():
-        for v in G_0.nodes():
-
-            if u == v:
-                continue
-
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
-
-            # addedCost is the cost of the path * how many times it appears in all paths from s to t
-            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
-            # hence cannot branch into other paths.
-            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * distance[u][v]
-
-            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
-            # They are calculated separately because u->v is not actually added to G_0
-            totalCostOfRest = 0
-            for edge in G_0.edges():
-                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
-                                   G[edge[0]][edge[1]]['cost']
-            score = totalCostOfNewPath + totalCostOfRest
-
-            if score < bestscore:
-                bestscore = score
-                bestpath = nx.reconstruct_path(u, v, predecessors)
-
-    return bestscore, bestpath
-
-
 def costFunction2(G, G_0, ancestors):
     """
     Also known as FindNextSubPath
@@ -503,6 +443,66 @@ def costFunction2(G, G_0, ancestors):
             if score < bestscore:
                 bestscore = score
                 bestpath = u_v_path
+
+    return bestscore, bestpath
+
+
+def floydWarshall(G, G_0, ancestor):
+    """
+    This is the same cost function as costFunction2, but paths are obtained using Floyd-Warshall algorithm.
+    ancestor argument is redundant. It is here to keep all the arguments for all cost functions consistent.
+    """
+
+    # Obtain the number of paths from node to s/t in G_0
+    n_paths_to_sink = CountPathsToSink(G_0)
+    n_paths_from_source = CountPathsFromSource(G_0)
+
+    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
+    # It is here otherwise it will be called twice for every edge.
+    nodes = list(nx.topological_sort(G_0))
+
+    # Initialize best score as a big number
+    try:
+        bestscore = math.inf
+    # In case old math module
+    except AttributeError:
+        bestscore = 99999999999999999999
+    bestpath = None
+
+    # G_delta = G - G_0
+    G_delta = getG_delta(G, G_0)
+
+    start = time.time()
+    predecessors, distance = nx.floyd_warshall_predecessor_and_distance(G_delta, weight="cost")
+    end = time.time()
+    print("Floyd-Warshall took {} seconds.".format(end-start))
+
+    for u in G_0.nodes():
+        for v in G_0.nodes():
+
+            if u == v:
+                continue
+
+            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
+            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
+            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
+
+            # addedCost is the cost of the path * how many times it appears in all paths from s to t
+            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
+            # hence cannot branch into other paths.
+            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * distance[u][v]
+
+            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
+            # They are calculated separately because u->v is not actually added to G_0
+            totalCostOfRest = 0
+            for edge in G_0.edges():
+                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
+                                   G[edge[0]][edge[1]]['cost']
+            score = totalCostOfNewPath + totalCostOfRest
+
+            if score < bestscore:
+                bestscore = score
+                bestpath = nx.reconstruct_path(u, v, predecessors)
 
     return bestscore, bestpath
 
@@ -634,7 +634,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    start = time.time()
+    total_start = time.time()
     main(sys.argv)
-    end = time.time()
-    print("Function call took {} seconds in total.".format(end-start))
+    total_end = time.time()
+    print("Function call took {} seconds in total.".format(total_end-total_start))

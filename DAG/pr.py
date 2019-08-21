@@ -52,6 +52,8 @@ def recall(dic, pos):
 
 def getItems(row, already_seen):
     line = ""
+    if len(row) == 0:
+        return "empty\t"
     if type(row[0]) is tuple:
         for item in row:
             if item not in already_seen:
@@ -68,9 +70,11 @@ def getItems(row, already_seen):
 def pr(dic, pos):
     prec = precision(dic, pos)
     rec = recall(dic, pos)
+    """
     outfile_name = "pr_out_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".txt"
     counter = 0
     already_seen = set()
+    
     with open(outfile_name, "w") as f:
         if len(dic[1][0]) == 1:
             f.write("#j\tnode\tprecision\trecall\n")
@@ -82,6 +86,7 @@ def pr(dic, pos):
             line += "{}\t{}\n".format(prec[counter], rec[counter])
             counter += 1
             f.write(line)
+    """
     return prec, rec
 
 
@@ -123,13 +128,21 @@ def getPositives(pathway, mode):
     return getPositiveEdges(pathway)
 
 
-def getOutputNodes(output_file):
+def getOutputNodes(output_file, G_0_file):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of nodes as values.
     IMPORTANT: nodes are NOT guaranteed to be unique and will repeat
     """
-    dic = {}
+    dic = {0: []}
+    with open(G_0_file) as gf:
+        for line in gf:
+            if line == "\n" or line[0] == "#":
+                continue
+            items = line.rstrip().split("\t")
+            dic[0].append(items[0])
+        dic[0].append(items[1])
+
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -141,12 +154,20 @@ def getOutputNodes(output_file):
     return dic
 
 
-def getOutputEdges(output_file):
+def getOutputEdges(output_file, G_0_file):
     """
     Iterates over the output file to create a dic that
     has j as key and a list of newly added edges as values.
     """
-    dic = {}
+    dic = {0: []}
+
+    with open(G_0_file) as gf:
+        for line in gf:
+            if line == "\n" or line[0] == "#":
+                continue
+            items = line.rstrip().split("\t")
+            dic[0].append((items[0], items[1]))
+
     with open(output_file) as of:
         for line in of:
             if line == "\n" or line[0] == "#":
@@ -161,59 +182,13 @@ def getOutputEdges(output_file):
     return dic
 
 
-def getOutput(output_file, mode):
+def getOutput(output_file, mode, G_0_file):
     """
     Wrapper function that calls correct getOutput based on mode
     """
     if mode == "nodes":
-        return getOutputNodes(output_file)
-    return getOutputEdges(output_file)
-
-
-def p_getOutputNodes(pl_output):
-    """
-    Iterates over the output file to create a dic that
-    has j as key and a list of nodes as values.
-    IMPORTANT: nodes are NOT guaranteed to be unique and will repeat
-    """
-    dic = {}
-    with open(pl_output) as output_file:    #for PathLinker
-        for line in output_file:
-            if line == "\n" or line[0] == "#":
-                continue
-            items = line.rstrip().split("\t")
-            path = items[2] #2 for PathLinker output
-            nodes = path.split("|")
-            dic[int(items[0])] = nodes
-    return dic
-
-
-def p_getOutputEdges(pl_output):
-    """
-    Iterates over the output file to create a dic that
-    has j as key and a list of newly added edges as values.
-    """
-    dic = {}
-    with open(pl_output) as output_file:    #for PathLinker
-        for line in output_file:
-            if line == "\n" or line[0] == "#":
-                continue
-            items = line.rstrip().split("\t")
-            path = items[2]#2 for PathLinker output, 3 for DAG output
-            nodes = path.split("|")
-            edges = []
-            for i in range(len(nodes)-1):
-                edges.append((nodes[i], nodes[i+1]))
-            dic[int(items[0])] = edges
-    return dic
-
-def p_getOutput(pl_output, mode):
-    """
-    Wrapper function that calls correct getOutput based on mode
-    """
-    if mode == "nodes":
-        return p_getOutputNodes(pl_output)
-    return p_getOutputEdges(pl_output)
+        return getOutputNodes(output_file, G_0_file)
+    return getOutputEdges(output_file, G_0_file)
 
 
 def main(args):
@@ -254,7 +229,7 @@ def main(args):
     
     # Doing the above but for PathLinker output
     if pl_flag:
-        p_dic = p_getOutput(pl_output, mode)
+        p_dic = getOutput(pl_output, mode)
         p_precision, p_recall = pr(p_dic, pos)
         # pos is pathway dependant so will be the same for PathLinker
     
@@ -269,7 +244,6 @@ def main(args):
     print("Saving with filename ", name)
     plt.savefig(name)
     plt.show()
-    
 
 
 if __name__ == "__main__":

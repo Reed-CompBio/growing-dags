@@ -1,7 +1,0 @@
-#k	path_length	path
-1	165	a|e|f|t
-2	224	e|g|t
-3	289	u|v
-4	384	u|x|v
-5	384	None
-6	384	None

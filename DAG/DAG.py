@@ -14,11 +14,11 @@ Usage:
     You can use this script with::
 
         $ python DAG.py interactome.txt G_0.txt nodes.txt 100
-        
+
     or for more details::
 
         $ python DAG.py -h
-        
+
 Dependencies:
     * NetworkX
 
@@ -574,7 +574,7 @@ def floydWarshall(G, G_0, ancestors):
     start = time.time()
     predecessors, distance = nx.floyd_warshall_predecessor_and_distance(G_delta, weight="cost")
     end = time.time()
-    print("Floyd-Warshall took {} seconds.".format(end-start))
+    print("Floyd-Warshall took {} seconds.".format(end - start))
 
     for u in G_0.nodes():
         for v in G_0.nodes():
@@ -691,6 +691,95 @@ def costFunction3(G, G_0, ancestors):
     return bestscore, bestpath
 
 
+def costFunction4(G, G_0, ancestors, a):
+
+    # Obtain the number of paths from node to s/t in G_0
+    n_paths_to_sink = CountPathsToSink(G_0)
+    n_paths_from_source = CountPathsFromSource(G_0)
+
+    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
+    # It is here otherwise it will be called twice for every v in vset for every u.
+    nodes = list(nx.topological_sort(G_0))
+
+    # Initialize best score as a big number
+    try:
+        bestscore = math.inf
+    # In case old math module
+    except AttributeError:
+        bestscore = 99999999999999999999
+    bestpath = None
+
+    # G_delta = G - G_0
+    G_delta = getG_delta(G, G_0)
+
+    for u in G_0.nodes():
+        # If all the edges connected to a node is in G_0, node will not be in G_delta
+        if u not in G_delta.nodes():
+            continue
+
+        # Vset is the set of nodes that doesn't have a path to u
+        vset_original = set(G_0.nodes()) - ancestors[u]
+
+        # Self is removed from target v's
+        vset_original.remove(u)
+
+        # Set size can't be changed during iteration so vset is copied.
+        vset_modified = vset_original.copy()
+
+        # Remove v's that cannot be reached in G_delta
+        for v in vset_original:
+            if v not in G_delta.nodes or not nx.has_path(G_delta, u, v):
+                vset_modified.remove(v)
+
+        if len(vset_modified) > 0:
+            start = time.time()
+            # This copy is only here when for loop below is over vset_modified
+            results = multi_target_dijkstra(G_delta, u, vset_modified.copy())
+            end = time.time()
+            print("Dijkstra took {} seconds".format(end - start))
+
+        # In the working version of DAG, this happens over vset_original with checked,
+        # to take into account previously calculated stuff.
+        # Here I've changed it into vset_modified to get rid of checked and maybe
+        # reimplement it later to make sure everything is working ok.
+        # Also, this for loop should be at the same level as if len(vset_modified) > 0 when checked is being used
+        for v in vset_modified:
+            u_v_cost, u_v_path = results[v]
+
+            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
+            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
+            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
+
+            # addedCost is the cost of the path * how many times it appears in all paths from s to t
+            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
+            # hence cannot branch into other paths.
+            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * u_v_cost
+
+            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
+            # They are calculated separately because u->v is not actually added to G_0
+            totalCostOfRest = 0
+            for edge in G_0.edges():
+                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
+                                   G[edge[0]][edge[1]]['cost']
+            score2 = totalCostOfNewPath + totalCostOfRest
+
+            # u->v path is not added to G_0 yet
+            costOfAllEdges = 0
+            costs = nx.get_edge_attributes(G_0, "cost")
+            for cost in costs.values():
+                costOfAllEdges += cost
+
+            # This is the total cost of all edges if u->v path was added to G_0
+            score1 = costOfAllEdges + u_v_cost
+
+            score = a * score1 + (1-a) * score2
+            if score < bestscore:
+                bestscore = score
+                bestpath = u_v_path
+
+    return bestscore, bestpath
+
+
 def updateAncestors(G_0, ancestors, start):
     """
     Helper function for apply. Updates ancestors after a new path is added.
@@ -704,7 +793,7 @@ def updateAncestors(G_0, ancestors, start):
         updateAncestors(G_0, ancestors, des)
 
 
-def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transform):
+def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transform, a):
     """
     The main function for the script.
 
@@ -741,7 +830,10 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
 
         # Get the next best path
         start = time.time()
-        bestscore, bestpath = cost_function(G, G_0, ancestors)
+        if cost_function != costFunction4:
+            bestscore, bestpath = cost_function(G, G_0, ancestors)
+        else:
+            bestscore, bestpath = cost_function(G, G_0, ancestors, a)
         end = time.time()
         print("#" + str(i), end - start)
 
@@ -784,7 +876,7 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
     return
 
 
-COST_FUNCTIONS = {1: costFunction1, 2: costFunction2, 3: costFunction3, 4: floydWarshall}
+COST_FUNCTIONS = {1: costFunction1, 2: costFunction2, 3: costFunction3, 4: costFunction4, 5: floydWarshall}
 """
 Maps the numbers given to argument parser to actual functions to be used in apply.
 When updated, argument parser also needs to be updated.
@@ -820,7 +912,13 @@ def main(args):
                              "1-Minimize the total cost of all edges(Dijkstra)."
                              "2-Minimize the total cost of all paths(Dijkstra)."
                              "3-Maximize the number of paths using shortest paths(Dijkstra)."
-                             "4-Minimize the total cost of all paths(Floyd-Warshall).")
+                             "4-Mixture of 1 and 2 where total score is a*score1 + (1-a)*score2 (default a=0.5)"
+                             "5-Minimize the total cost of all paths(Floyd-Warshall).")
+
+    parser.add_argument("-a", type=float, default=0.5,
+                        help="When cost function 4 is being used, the total score is "
+                             "a*score of cost function 1 + (1-a)*score of cost function 2."
+                             "By default a = 0.5.")
 
     args = parser.parse_args()
 
@@ -832,7 +930,8 @@ def main(args):
     args.cost_function = COST_FUNCTIONS[args.cost_function]
 
     # Run the main algorithm
-    apply(args.G_file, args.G_0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform)
+    apply(args.G_file, args.G_0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform,
+          args.a)
     return
 
 
@@ -840,4 +939,4 @@ if __name__ == "__main__":
     total_start = time.time()
     main(sys.argv)
     total_end = time.time()
-    print("Function call took {} seconds in total.".format(total_end-total_start))
+    print("Function call took {} seconds in total.".format(total_end - total_start))

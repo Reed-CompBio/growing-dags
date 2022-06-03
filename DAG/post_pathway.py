@@ -2,8 +2,8 @@ from graphspace_python.api.client import GraphSpace
 from graphspace_python.graphs.classes.gsgraph import GSGraph
 import sys
 
-USERNAME ='koset@reed.edu'
-PASSWORD = "nfbnke4Iifdc5D99Ee9V9@FA!8NFZie4"
+USERNAME =input('GS Username:')
+PASSWORD = input('GS Password:')
 
 
 node_colors = {"both" : "#FFF861", "pl" : "#F5B7EC", "dag" : "#F8B46C", None : "#CAE6EE"}
@@ -38,7 +38,7 @@ def readDAG(dag_output):
                     all_nodes.add(nodes[i])
                 all_nodes.add(nodes[i+1])
                 all_edges.add((nodes[i], nodes[i+1]))
-    
+
     return all_nodes, all_edges
 
 
@@ -56,7 +56,7 @@ def readPL(pl_output):
                     all_nodes.add(nodes[i])
                 all_nodes.add(nodes[i+1])
                 all_edges.add((nodes[i], nodes[i+1]))
-    
+
     return all_nodes, all_edges
 
 
@@ -68,7 +68,7 @@ def readPathwayEdges(edges_file):
                 continue
             items = line.rstrip().split("\t")
             edges.add((items[0], items[1]))
-            
+
     return edges
 
 
@@ -81,9 +81,9 @@ def readPathwayNodes(nodes_file):
                 continue
             items = line.rstrip().split("\t")
             node_items.add((items[0], items[1]))
-    
+
     return node_items
-    
+
 
 def findNodeAttributes(inDAG, inPL, node_type):
     color_key = None
@@ -93,12 +93,12 @@ def findNodeAttributes(inDAG, inPL, node_type):
         color_key = "dag"
     elif inPL:
         color_key = "pl"
-        
+
     color = node_colors[color_key]
     shape = node_shapes[node_type]
-    
+
     return color, shape
-    
+
 
 def findEdgeAttributes(inDAG, inPL):
     attr_key = None
@@ -108,9 +108,9 @@ def findEdgeAttributes(inDAG, inPL):
         attr_key = "dag"
     elif inPL:
         attr_key = "pl"
-    
+
     color, width, style = edge_attr[attr_key]
-    
+
     return width, color, style
 
 def createPathwayGraph(edges_file, nodes_file, dag_output, pl_output):
@@ -119,34 +119,34 @@ def createPathwayGraph(edges_file, nodes_file, dag_output, pl_output):
     pathway_edges = readPathwayEdges(edges_file)
     pathway_nodes = readPathwayNodes(nodes_file) #Set of tuples (node, type)
     G = GSGraph()
-    
+
     for node_item in pathway_nodes:
         inDAG = False
         inPL = False
         node = node_item[0]
         node_type = node_item[1]
-        
+
         if node in pl_nodes:
             inPL = True
         if node in dag_nodes:
             inDAG = True
-        
+
         node_color, node_shape = findNodeAttributes(inDAG, inPL, node_type)
-        
+
         G.add_node(node, label = node)
         G.add_node_style(node, shape = node_shape, color = node_color, width = 50, height = 40)
-    
+
     for edge in pathway_edges:
         inDAG = False
         inPL = False
-        
+
         if edge in pl_edges:
             inPL = True
         if edge in dag_edges:
             inDAG = True
-            
+
         edge_width, edge_color, style = findEdgeAttributes(inDAG, inPL)
-        
+
         G.add_edge(edge[0], edge[1], directed = True)
         G.add_edge_style(edge[0], edge[1], directed = True, width = edge_width, color = edge_color, edge_style = style)
 
@@ -158,11 +158,11 @@ def main(args):
     pathway_nodes_file = args[2]
     dag_output = args[3]
     pl_output = args[4]
-    
+
     pathway = pathway_edges_file[:pathway_edges_file.find("-")]
     print("Creating a graph for {}.".format(pathway))
     G = createPathwayGraph(pathway_edges_file, pathway_nodes_file, dag_output, pl_output)
-    
+
     gs = GraphSpace(USERNAME, PASSWORD)
     G.set_name("{0} Pathway".format(pathway))
     G.set_tags([pathway, "DAG", "PathLinker"])

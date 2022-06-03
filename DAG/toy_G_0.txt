@@ -1,3 +1,5 @@
 # G_0
 # tail	head
-a	v
+b e
+e j
+j n

@@ -2,8 +2,8 @@ from graphspace_python.api.client import GraphSpace
 from graphspace_python.graphs.classes.gsgraph import GSGraph
 import sys
 
-USERNAME ='koset@reed.edu'
-PASSWORD = "nfbnke4Iifdc5D99Ee9V9@FA!8NFZie4"
+USERNAME =input('GS Username:')
+PASSWORD = input('GS Password:')
 
 
 colors = {True: "#FEFCA0", False: "#8AECFE"}
@@ -22,10 +22,10 @@ def createGSGraph(pathway):
     pathway_edges = set()
     output_nodes = set()
     output_edges = set()
-    
+
     edge_count = 0
     inPathway_edge = 0
-    
+
     """
     with open(INTERACTOME) as interactome:
         for line in interactome:
@@ -42,14 +42,14 @@ def createGSGraph(pathway):
                 continue
             items = line.rstrip().split("\t")
             pathway_nodes[items[0]] = items[1]
-        
+
     with open(pathway+"-edges.txt") as edges_file:
         for line in edges_file:
             if line == "\n" or line[0] == "#":
                 continue
             items = line.rstrip().split("\t")
             pathway_edges.add((items[0], items[1]))
-            
+
     with open(pathway+"-output.txt") as output_file:
         for line in output_file:
             if line == "\n" or line[0] == "#":
@@ -58,7 +58,7 @@ def createGSGraph(pathway):
             j = items[0]
             path = items[3]
             nodes = path.split("|")
-            
+
             for node in nodes:
                 if node not in output_nodes:
                     t = "none"
@@ -69,7 +69,7 @@ def createGSGraph(pathway):
                     G.add_node(node, label = node, k = j)
                     G.add_node_style(node, shape = shapes[t], color = colors[inPathway], width = 50, height = 40)
                     output_nodes.add(node)
-                    
+
             for i in range(len(nodes)-1):
                 edge_count += 1
                 if (nodes[i], nodes[i+1]) not in output_edges:
@@ -83,7 +83,7 @@ def createGSGraph(pathway):
                     output_edges.add((nodes[i], nodes[i+1]))
 
         return G
-    
+
 def post(G, gs):
     try:
         graph = gs.update_graph(G)

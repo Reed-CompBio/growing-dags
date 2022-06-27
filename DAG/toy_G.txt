@@ -9,14 +9,14 @@ h g 1
 g l 1
 e f 1
 e j 1
-f k 1
+f k .5
 l f 1
 l k 1
 l o 1
 i m 1
 j i 1
 j m 1
-j n 1
+j n .1
 k n 1
 k o 1
 a i 1

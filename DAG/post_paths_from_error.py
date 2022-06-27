@@ -1,6 +1,7 @@
 from graphspace_python.api.client import GraphSpace
 from graphspace_python.graphs.classes.gsgraph import GSGraph
 import sys
+import ast
 
 USERNAME = input('GS Username:')
 PASSWORD = input('GS Password:')
@@ -21,11 +22,11 @@ with open('mapped-nodes.txt') as fin:
         row = line.strip().split()
         id2name[row[0]] = row[1]
 
-def createGSGraph(interactome,pathsfile,nodesf):
+def createGSGraph(interactome,pathsfile,logfile,nodesfile):
     G = GSGraph()
-
+    k=0
     node_types = {}
-    with open(nodesf) as nf:
+    with open(nodesfile) as nf:
         for line in nf:
             if line == "\n" or line[0] == "#":
                 continue
@@ -42,6 +43,7 @@ def createGSGraph(interactome,pathsfile,nodesf):
             edges.add((items[0], items[1],0))
             nodes.add((items[0],0))
             nodes.add((items[1],0))
+
     with open(pathsfile) as paths_file:
         for line in paths_file:
             if line == "\n" or line[0] == "#":
@@ -54,6 +56,21 @@ def createGSGraph(interactome,pathsfile,nodesf):
                     nodes.add((path[i],k))
                 if i != 0:
                     edges.add((path[i-1],path[i],k))
+
+    with open(logfile) as log_file:
+        for line in log_file:
+            if line == 'ERROR: internal node is in G_0!\n':
+                error_path = log_file.readline()
+                break
+    print(error_path,'error path')
+    error_list = ast.literal_eval(error_path)
+    print(error_list)
+    error_k = int(k)+1
+    for i in range(len(error_list)):
+        if error_list[i] not in [n[0] for n in nodes]:
+            nodes.add((error_list[i],error_k))
+        if i != 0:
+            edges.add((error_list[i-1],error_list[i],error_k))
 
     for node,k in nodes:
         if node not in node_types:
@@ -68,7 +85,10 @@ def createGSGraph(interactome,pathsfile,nodesf):
 
     for u,v,k in edges:
         G.add_edge(u,v, directed = True,k=k)
-        G.add_edge_style(u,v, directed = True, width = edge_width[False], color = edge_color[False], edge_style = edge_styles[False])
+        if int(k) == error_k:
+            G.add_edge_style(u,v, directed = True, width = edge_width[False], color = edge_color[True], edge_style = edge_styles[False])
+        else:
+            G.add_edge_style(u,v, directed = True, width = edge_width[False], color = edge_color[False], edge_style = edge_styles[False])
 
 
     return G
@@ -83,14 +103,15 @@ def post(G, gs):
     return graph
 
 def main(args):
-    G_0 = args[1]
-    paths = args[2]
-    nodes = args[3]
-    name = args[4]
-    G = createGSGraph(G_0,paths,nodes)
+    label = args[1]
+    G_0 = '../data/prepare-G0/ground_truth/%s-G0.txt' % (label)
+    pathsfile = '../output/ground_truth-G0/%s_c1_k25.txt' % (label)
+    logfile = '../output/ground_truth-G0/%s_c1_k25.log' % (label)
+    nodesfile = '../data/netpath/%s-nodes.txt' % (label)
+
+    G = createGSGraph(G_0,pathsfile,logfile,nodesfile)
     gs = GraphSpace(USERNAME, PASSWORD)
-    G.set_name("DAG paths for {0}".format(name))
-    G.set_tags(["DAG", name])
+    G.set_name("ERROR DEBUG DAG paths for {0}".format(label))
     post(G, gs)
     return
 

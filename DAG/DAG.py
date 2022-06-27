@@ -5,6 +5,9 @@ import heapq as hq
 import sys
 import time
 
+NUM_RERUNS = 0
+POSS_RERUNS = 0
+
 """
 This is the main file that script for our signaling pathway reconstruction
 using Directed Acyclic Graphs (DAGs) method. This script takes in text files
@@ -29,6 +32,51 @@ Notes:
     the argparse option should be updated.
 """
 
+def main(args):
+    """
+    Helper function to define the argument parser for usage from terminal.
+    """
+    parser = argparse.ArgumentParser(description='DAG')
+    parser.add_argument("G_file",
+                        help="File that contains all the interactions that makes up G, usually the interactome. Must be weighted.")
+
+    parser.add_argument("G_0_file",
+                        help="File that contains the initial DAG.")
+
+    parser.add_argument("node_file",
+                        help="File that contains node ids and their types. Should not contain nodes named 's' or 't'.")
+
+    parser.add_argument("-k", type=int,default=10,help="Number of paths the algorithm will try to add to G_0 (default 10). The algorithm might end earlier if it cannot find more paths.")
+
+    parser.add_argument('-o',"--out_file", default=False, help="Output file name. (default='dag-out-{k}.txt')")
+
+    parser.add_argument("--no-log-transform", action="store_true", default=False,
+                        help="If G_file contains interaction costs (lower is better) instead of probabilities"
+                             "(higher is better), this option should be used.")
+
+    parser.add_argument('-c',"--cost-function", type=int, choices=[1,2,3,4,5], default=2,
+                        help="Choice of cost function. (default=2)\n"
+                             "1-Minimize the total cost of all edges(Dijkstra)."
+                             "2-Minimize the total cost of all paths(Dijkstra)."
+                             "3-Maximize the number of paths using shortest paths(Dijkstra)."
+                             "4-Mixture of 1 and 2 where total score is a*score1 + (1-a)*score2 (default a=0.5)"
+                             "5-Minimize the total cost of all paths(Floyd-Warshall).")
+
+    parser.add_argument("-a", type=float, default=0.5,
+                        help="When cost function 4 is being used, the total score is "
+                             "a*score of cost function 1 + (1-a)*score of cost function 2."
+                             "By default a = 0.5.")
+
+    args = parser.parse_args()
+
+    # If there is no output file name, create one
+    if not args.out_file:
+        args.out_file = "dag-out-{}.txt".format(args.k)
+
+    # Run the main algorithm
+    apply(args.G_file, args.G_0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform,
+          args.a)
+    return
 
 def readGraph(G_file):
     """
@@ -69,7 +117,6 @@ def readGraph(G_file):
             G.add_edge(node1, node2, weight=edge_weight)
     return G
 
-
 def logTransformEdgeWeights(G):
     """
     Modifies G so that each edge has an attribute "cost" that contains
@@ -84,7 +131,6 @@ def logTransformEdgeWeights(G):
         G[u][v]['cost'] = w
     return
 
-
 def turnWeightsIntoCosts(G):
     """
     Modifies G so that each edge has an attribute "cost" that contains
@@ -97,7 +143,6 @@ def turnWeightsIntoCosts(G):
     for u, v in G.edges():
         G[u][v]["cost"] = G[u][v]["weight"]
     return
-
 
 def addSourceSink(node_file, G):
     """
@@ -125,6 +170,15 @@ def addSourceSink(node_file, G):
             elif items[1] == "target" or items[1] == "tf":
                 tfs.add(items[0])
 
+    # Remove incoming edges to receptors and outgoing edges from tfs.
+    # NEW 2022
+    to_remove = []
+    for u,v in G.edges():
+        if v in receptors or u in tfs:
+            to_remove.append([u,v])
+    print('removing %d edges into receptors or out of tfs' % (len(to_remove)))
+    G.remove_edges_from(to_remove)
+
     # Connect receptors to s
     for receptor in receptors:
         if receptor not in G.nodes():
@@ -142,30 +196,6 @@ def addSourceSink(node_file, G):
     # For creation of G_0
     return receptors, tfs
 
-
-def createAncestors(G_0, ancestors, starting_node="s", node_ancestors=None):
-    """
-    Helper function for createG_0. Fills in the ancestors dictionary,
-    which contains all the ancestors of every node.
-
-    :param G_0: A NetworkX DiGraph created during ```createG_0```.
-    :param ancestors: A dictionary containing all the ancestors for each node.
-    :param starting_node: The node whose descendants are being updated.
-    :param node_ancestors: Ancestors of the starting node.
-    """
-    if node_ancestors is None:
-        node_ancestors = set()
-
-    for node in G_0.successors(starting_node):
-        # Initialize empty sets
-        if node not in ancestors.keys():
-            ancestors[node] = set()
-        # Merge ancestors and add itself
-        ancestors[node] |= node_ancestors
-        ancestors[node].add(starting_node)
-        createAncestors(G_0, ancestors, node, ancestors[node])
-
-
 def createG_0(G_0_file, G, receptors, tfs):
     """
     Creates an edge subgraph of G from G_0 file, including s and t.
@@ -179,7 +209,6 @@ def createG_0(G_0_file, G, receptors, tfs):
     :return: G_0: A NetworkX DiGraph representing the information in G_0_file.
     """
     edges = set()
-    ancestors = {"s": set(), "t": set()}
 
     # Collect G_0 edges from G_0 file
     with open(G_0_file) as f:
@@ -198,6 +227,10 @@ def createG_0(G_0_file, G, receptors, tfs):
             if node2 in tfs:
                 edges.add((node2, "t"))
 
+            # NEW 2022: ignore edges out of tfs or into receptors:
+            if node1 in tfs or node2 in receptors:
+                continue
+
             edge = (node1, node2)
             if edge not in G.edges():
                 raise Exception(
@@ -207,9 +240,8 @@ def createG_0(G_0_file, G, receptors, tfs):
     # edge_subgraph creates a Read-only view
     # The outer DiGraph function turns it into a mutable graph
     G_0 = nx.DiGraph(G.edge_subgraph(edges))
-    createAncestors(G_0, ancestors)
-    return G_0, ancestors
-
+    assert nx.is_directed_acyclic_graph(G_0)
+    return G_0, None
 
 def CountPathsToSink(G_0):
     """
@@ -234,7 +266,6 @@ def CountPathsToSink(G_0):
             n_paths_to_sink[node] = number
     return n_paths_to_sink
 
-
 def CountPathsFromSource(G_0):
     """
     Returns a dictionary with nodes as keys and values for
@@ -257,22 +288,39 @@ def CountPathsFromSource(G_0):
             n_paths_from_source[node] = number
     return n_paths_from_source
 
-
 def getG_delta(G, G_0):
     """
     Used as the graph where new paths are found.
 
     :param G: The graph created using ```readGraph``` function.
     :param G_0: The graph created using ```createG_0``` function.
-    :return: A read-only G_delta that is G - G_0.
+    :return: A read-only G_delta that is G - G_0. (* with some extra edges removed)
     """
+    '''
+    induced = nx.induced_subgraph(G,G_0.nodes()).copy()
+    print('G_0 has %d edges; induced G_0 has %d edges' %(len(G_0.edges()),len(induced.edges())))
+    to_remove = []
+    for edge in induced.edges():
+        if edge in G_0.edges(): # definitely keep G_0 to remove.
+            continue
+        ancestors = nx.ancestors(G_0,edge[1])
+        if edge[0] in ancestors:
+            to_remove.append(edge)
+    induced.remove_edges_from(to_remove)
+    print('Removing %d edges after retaining edges that follow topological order' %(len(induced.edges())))
+    # NEW 2022: it's possible that (u,v) is in G but v < u in G_0's nodes.
+    # This should NEVER be selected because it violates the DAG; remove these.
+    # fixed this by using induced subgraph rather than G_0 and ignoring edges that are OK.
+    '''
     edges = []
     for edge in G.edges():
+
         if edge not in G_0.edges():
             edges.append(edge)
-    G_delta = nx.edge_subgraph(G, edges)
-    return G_delta
 
+    G_delta = nx.edge_subgraph(G, edges)
+    #print('removed %d edges from G (%d edges) to get G_delta (%d edges)' % (len(G.edges())-len(edges),len(G.edges()),len(G_delta.edges())))
+    return G_delta
 
 def UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes):
     """
@@ -299,7 +347,6 @@ def UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes):
         i -= 1
     return new
 
-
 def UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes):
     """
     Used within cost functions to enumerate the usage of each edge if
@@ -325,7 +372,6 @@ def UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes):
         i += 1
     return new
 
-
 def multi_target_dijkstra(G, u, vset, all_vs):
     """
     Finds the shortest paths from u to every node in vset.
@@ -340,6 +386,8 @@ def multi_target_dijkstra(G, u, vset, all_vs):
     Takes in a networkx graph, a starting node u and a set of target nodes vset.
     Returns a dictionary that has nodes as keys and a tuple of distance, path as values.
     """
+    #print('MULTI_TARGET_DIJKSTRA',u,vset,all_vs)
+
     heap = []  # contains lists of distance, node, path
     finished = {}  # node -> (dist, path)
     seen = {}  # node -> dist
@@ -363,272 +411,63 @@ def multi_target_dijkstra(G, u, vset, all_vs):
         seen[item] = dist
 
     # Iterate over vset so function will quit when all target nodes are found
-    while len(vset) > 0 and len(heap) > 0:
+    found_vset = set()
+    while len(vset) > len(found_vset) and len(heap) > 0:
         current_dist, current_node, current_path = hq.heappop(heap)
-        if current_node in finished.keys():
+
+        # if current_node already has a smaller distance or equal, skip it.
+        if current_node in finished and current_dist >= finished[current_node][0]:
             continue
+
+        # otherwise, update finished dictionary & explore.
         finished[current_node] = (current_dist, current_path)
 
         # A node popping from the priority queue means shortest path to it is found
-        if current_node in vset:
-            vset.remove(current_node)
-
-        for node in G.successors(current_node):
-            if node in finished.keys():
-                continue
-            dist = current_dist + G[current_node][node]["cost"]
-            if dist < seen[node]:
-                seen[node] = dist
-                hq.heappush(heap, (dist, node, current_path + [node]))
+        # new 2022: if you find a node in vset, DO NOT continue. It would otherwise be considered an internal node.
+        #print('\n')
+        #print(current_node,finished[current_node])
+        if current_node in all_vs:
+            if current_node in vset:
+                found_vset.add(current_node)
+        else:
+            #print(current_node,'continues!')
+            for node in G.successors(current_node):
+                dist = current_dist + G[current_node][node]["cost"]
+                if dist < seen[node]:
+                    seen[node] = dist
+                    hq.heappush(heap, (dist, node, current_path + [node]))
 
     # new 2022: prune finished to just be vset.
-    finished_vset = {}
-    for v in orig_vset:
-        if v in finished:
-            if finished[v][1] == None:
-                internal_nodes = set()
-            else:
-                internal_nodes = set(finished[v][1][1:-1])
-            if len(internal_nodes.intersection(all_vs))==0:
-                finished_vset[v] = finished[v]
-            else:
-                finished_vset[v] = (inf,None) # this is not technically correct; but it will not be the smallest distance.
-        else: # disconnected target - infinite distance.
-            finished_vset[v] = (inf,None)
+    finished_vset = {v:finished[v] for v in finished if v in vset}
+    finished_vset.update({v:(inf,None) for v in vset if v not in finished})
+
+    #print(len(finished_vset),finished_vset)
+    #if len(finished_vset)>0:
+    #    sys.exit()
     return finished_vset
 
+def costFunction2(G,G_0,u,v,u_v_cost,u_v_path, n_paths_to_sink,n_paths_from_source,nodes):
 
-def costFunction1(G, G_0, ancestors):
-    """
-    Finds shortest paths in G - G_0 and returns the path that minimizes the total cost of all edges.
+    # Get how many paths there are from each node to s and t if edge u->v is added to G_0
+    new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
+    new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
 
-    :param G: The graph created using ```readGraph``` function.
-    :param G_0: The graph created using ```createG_0``` function.
-    :param ancestors: The dictionary created using ```createG_0``` function.
-    :return: * bestscore (float): The score of the bestpath according to the cost function.
-             * bestpath (list): The list of nodes that make up the path to be added to G_0.
-    """
-    # Initialize best score as a big number
-    try:
-        bestscore = math.inf
-    # In case old math module
-    except AttributeError:
-        bestscore = 99999999999999999999
-    bestpath = None
+    # addedCost is the cost of the path * how many times it appears in all paths from s to t
+    # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
+    # hence cannot branch into other paths.
+    totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * u_v_cost
 
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    for u in G_0.nodes():
-        # If all the edges connected to a node is in G_0, node will not be in G_delta
-        if u not in G_delta.nodes():
-            continue
-
-        # Vset is the set of nodes that doesn't have a path to u
-        vset_original = set(G_0.nodes()) - ancestors[u]
-
-        # Self is removed from target v's
-        vset_original.remove(u)
-
-        # Set size can't be changed during iteration so vset is copied.
-        vset_modified = vset_original.copy()
-
-        # Remove v's that cannot be reached in G_delta
-        for v in vset_original:
-            if v not in G_delta.nodes or not nx.has_path(G_delta, u, v):
-                vset_modified.remove(v)
-
-        if len(vset_modified) > 0:
-            start = time.time()
-            # This copy is only here when for loop below is over vset_modified
-            results = multi_target_dijkstra(G_delta, u, vset_modified.copy())
-            end = time.time()
-            print("Dijkstra took {} seconds".format(end - start))
-
-        # In the working version of DAG, this happens over vset_original with checked,
-        # to take into account previously calculated stuff.
-        # Here I've changed it into vset_modified to get rid of checked and maybe
-        # reimplement it later to make sure everything is working ok.
-        # Also, this for loop should be at the same level as if len(vset_modified) > 0 when checked is being used
-        for v in vset_modified:
-            u_v_cost, u_v_path = results[v]
-
-            # u->v path is not added to G_0 yet
-            costOfAllEdges = 0
-            costs = nx.get_edge_attributes(G_0, "cost")
-            for cost in costs.values():
-                costOfAllEdges += cost
-
-            # This is the total cost of all edges if u->v path was added to G_0
-            score = costOfAllEdges + u_v_cost
-
-            if score < bestscore:
-                bestscore = score
-                bestpath = u_v_path
-
-    return bestscore, bestpath
-
-
-def costFunction2_old(G, G_0, ancestors):
-    """
-    Finds shortest paths in G - G_0 and returns the path that minimizes the total cost of all paths.
-
-    :param G: The graph created using ```readGraph``` function.
-    :param G_0: The graph created using ```createG_0``` function.
-    :param ancestors: The dictionary created using ```createG_0``` function.
-    :return: * bestscore (float): The score of the bestpath according to the cost function.
-             * bestpath (list): The list of nodes that make up the path to be added to G_0.
-    """
-    # Obtain the number of paths from node to s/t in G_0
-    n_paths_to_sink = CountPathsToSink(G_0)
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
-    # It is here otherwise it will be called twice for every v in vset for every u.
-    nodes = list(nx.topological_sort(G_0))
-
-    # Initialize best score as a big number
-    try:
-        bestscore = math.inf
-    # In case old math module
-    except AttributeError:
-        bestscore = 99999999999999999999
-    bestpath = None
-
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    for u in G_0.nodes():
-        # If all the edges connected to a node is in G_0, node will not be in G_delta
-        if u not in G_delta.nodes():
-            continue
-
-        # Vset is the set of nodes that doesn't have a path to u
-        vset_original = set(G_0.nodes()) - ancestors[u]
-
-        # Self is removed from target v's
-        vset_original.remove(u)
-
-        # Set size can't be changed during iteration so vset is copied.
-        vset_modified = vset_original.copy()
-
-        # Remove v's that cannot be reached in G_delta
-        for v in vset_original:
-            if v not in G_delta.nodes or not nx.has_path(G_delta, u, v):
-                vset_modified.remove(v)
-
-        if len(vset_modified) > 0:
-            start = time.time()
-            # This copy is only here when for loop below is over vset_modified
-            results = multi_target_dijkstra(G_delta, u, vset_modified.copy())
-            end = time.time()
-            print("Dijkstra took {} seconds".format(end - start))
-
-        # In the working version of DAG, this happens over vset_original with checked,
-        # to take into account previously calculated stuff.
-        # Here I've changed it into vset_modified to get rid of checked and maybe
-        # reimplement it later to make sure everything is working ok.
-        # Also, this for loop should be at the same level as if len(vset_modified) > 0 when checked is being used
-        for v in vset_modified:
-            u_v_cost, u_v_path = results[v]
-
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
-
-            # addedCost is the cost of the path * how many times it appears in all paths from s to t
-            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
-            # hence cannot branch into other paths.
-            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * u_v_cost
-
-            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
-            # They are calculated separately because u->v is not actually added to G_0
-            totalCostOfRest = 0
-            for edge in G_0.edges():
-                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
-                                   G[edge[0]][edge[1]]['cost']
-            score = totalCostOfNewPath + totalCostOfRest
-
-            if score < bestscore:
-                bestscore = score
-                bestpath = u_v_path
-
-    return bestscore, bestpath
-
-def costFunction2(G, G_0, ancestors, dist):
-    """
-    Finds shortest paths in G - G_0 and returns the path that minimizes the total cost of all paths.
-
-    :param G: The graph created using ```readGraph``` function.
-    :param G_0: The graph created using ```createG_0``` function.
-    :param ancestors: The dictionary created using ```createG_0``` function.
-    :return: * bestscore (float): The score of the bestpath according to the cost function.
-             * bestpath (list): The list of nodes that make up the path to be added to G_0.
-    """
-    '''
-    print('-'*10)
-    print('DIST:')
-    for d in dist:
-        print(d,':',dist[d])
-    print('-'*10)
-    print()
-    '''
-
-    # Obtain the number of paths from node to s/t in G_0
-    n_paths_to_sink = CountPathsToSink(G_0)
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
-    # It is here otherwise it will be called twice for every v in vset for every u.
-    nodes = list(nx.topological_sort(G_0))
-
-    # Initialize best score as a big number
-    try:
-        bestscore = math.inf
-    # In case old math module
-    except AttributeError:
-        bestscore = 99999999999999999999
-    bestpath = None
-
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    for u in G_0.nodes():
-        # If all the edges connected to a node is in G_0, node will not be in G_delta
-        if u not in G_delta.nodes():
-            continue
-
-        for v in dist[u].keys():
-            if dist[u][v][1] == None:
-                continue
-
-            u_v_cost, u_v_path = dist[u][v]
-
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
-
-            # addedCost is the cost of the path * how many times it appears in all paths from s to t
-            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
-            # hence cannot branch into other paths.
-            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * u_v_cost
-
-            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
-            # They are calculated separately because u->v is not actually added to G_0
-            totalCostOfRest = 0
-            for edge in G_0.edges():
-                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
-                                   G[edge[0]][edge[1]]['cost']
-            score = totalCostOfNewPath + totalCostOfRest
-            #print('**',u,'->',v,'dist:',u_v_cost,'path:',u_v_path,'score:',score)
-            if score < bestscore:
-                #print('updated as best!')
-                bestscore = score
-                bestpath = u_v_path
-
-    return bestscore, bestpath
+    # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
+    # They are calculated separately because u->v is not actually added to G_0
+    totalCostOfRest = 0
+    for edge in G_0.edges():
+        totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
+                           G[edge[0]][edge[1]]['cost']
+    score = totalCostOfNewPath + totalCostOfRest
+    return score
 
 def update_distances(G_0,G_delta,dist={},added_path=[]):
+    global NUM_RERUNS,POSS_RERUNS
     ## if just G_0 is passed, initialize distances.
     ## otherwise update.
 
@@ -641,17 +480,41 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
         print(edge)
     print('*'*10)
     '''
+    #print('\nSTARTING UPDATE')
 
     if dist == {}:
-        #print('Initializing Distances...')
+        print('Initializing Distances...')
+        num = 0
         for u in G_0.nodes():
-                upstream = set(nx.ancestors(G_0,u))
-                downstream = set(nx.descendants(G_0,u))
-                incomparable = set(G_0.nodes()) - upstream - downstream - set([u])
-                start = time.time()
-                dist[u] = multi_target_dijkstra(G_delta, u, downstream.union(incomparable),downstream.union(incomparable))
-                end = time.time()
-                #print("Init Dijkstra took {} seconds".format(end - start))
+            num+=1
+            print('running for %s (%d/%d)' % (u,num,G_0.number_of_nodes()))
+            upstream = set(nx.ancestors(G_0,u))
+            downstream = set(nx.descendants(G_0,u))
+            incomparable = set(G_0.nodes()) - upstream - downstream - set([u])
+            G_delta_copy = G_delta.copy()
+            G_delta_copy.remove_nodes_from(upstream)
+            start = time.time()
+            dist[u] = multi_target_dijkstra(G_delta_copy, u, downstream.union(incomparable),downstream.union(incomparable))
+            end = time.time()
+            for v in dist[u].keys():
+                if dist[u][v][1] != None:
+                    internal_nodes = dist[u][v][1][1:-1]
+                    if any([x in G_0.nodes() for x in internal_nodes]):
+                        print('ERROR: internal node is in G_0!')
+                        print(u,v,dist[u][v])
+                        print(internal_nodes,'internal nodes')
+                        print(G_0.nodes(),'G_0s nodes')
+                        print('!!!')
+                        print(dist)
+                        print('!!!')
+                        for u in dist:
+                            print(' ',u,':',dist[u])
+                        print('!!!')
+                        sys.exit()
+
+            #print("Init Dijkstra took {} seconds".format(end - start))
+        print('done init. distances')
+        #sys.exit()
     else:
         #print('Updating Distances...')
 
@@ -693,102 +556,25 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
                     if v not in dist[u] or (dist[u][v][1] != None and len(set(dist[u][v][1]).intersection(internal_nodes))>0) or [u,v] == added_path:
                         rerun.add(v)
 
-            print('  Rerun Dijkstra for {} ({}/{})'.format(u,len(rerun),len(downstream.union(incomparable))))
-            '''
-            print(u,rerun)
-            for v in rerun:
-                if v in dist[u]:
-                    print(u,'->',v,':',dist[u][v])
-                else:
-                    print(u,'->',v,'not yet calculated')
-            '''
+            #print('  Rerun Dijkstra for {} ({}/{})'.format(u,len(rerun),len(downstream.union(incomparable))))
+            NUM_RERUNS += len(rerun)
+            POSS_RERUNS += len(downstream.union(incomparable))
+
             start = time.time()
             if len(rerun)>0:
-                res = multi_target_dijkstra(G_delta, u, rerun, downstream.union(incomparable))
+                G_delta_copy = G_delta.copy()
+                G_delta_copy.remove_nodes_from(upstream)
+                res = multi_target_dijkstra(G_delta_copy, u, rerun, downstream.union(incomparable))
                 #print(res)
                 dist[u].update(res)
             end = time.time()
             #print("Took {} seconds".format(end - start))
-
+    #print('ENDING UPDATE\n')
     return dist
 
-def floydWarshall(G, G_0, ancestors):
+def get_best_path(G, G_0, dist, cost_function):
     """
     Finds shortest paths in G - G_0 and returns the path that minimizes the total cost of all paths.
-    Uses the Floyd-Warshall algorithm instead of ```multi_target_dijkstra```.
-    It either doesn't work yet or takes a very long time so don't use.
-
-    :param G: The graph created using ```readGraph``` function.
-    :param G_0: The graph created using ```createG_0``` function.
-    :param ancestors: The dictionary created using ```createG_0``` function. It is not used, but here to keep
-            cost function arguments consistent.
-    :return: * bestscore (float): The score of the bestpath according to the cost function.
-             * bestpath (list): The list of nodes that make up the path to be added to G_0.
-    """
-
-    # Obtain the number of paths from node to s/t in G_0
-    n_paths_to_sink = CountPathsToSink(G_0)
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
-    # It is here otherwise it will be called twice for every edge.
-    nodes = list(nx.topological_sort(G_0))
-
-    # Initialize best score as a big number
-    try:
-        bestscore = math.inf
-    # In case old math module
-    except AttributeError:
-        bestscore = 99999999999999999999
-    bestpath = None
-
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    start = time.time()
-    predecessors, distance = nx.floyd_warshall_predecessor_and_distance(G_delta, weight="cost")
-    end = time.time()
-    print("Floyd-Warshall took {} seconds.".format(end - start))
-
-    for u in G_0.nodes():
-        for v in G_0.nodes():
-
-            if u == v:
-                continue
-
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
-
-            # addedCost is the cost of the path * how many times it appears in all paths from s to t
-            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
-            # hence cannot branch into other paths.
-            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * distance[u][v]
-
-            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
-            # They are calculated separately because u->v is not actually added to G_0
-            totalCostOfRest = 0
-            for edge in G_0.edges():
-                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
-                                   G[edge[0]][edge[1]]['cost']
-            score = totalCostOfNewPath + totalCostOfRest
-
-            if score < bestscore:
-                bestscore = score
-                bestpath = nx.reconstruct_path(u, v, predecessors)
-
-    return bestscore, bestpath
-
-
-def costFunction3(G, G_0, ancestors):
-    """
-    In all the other cost functions, the Overleaf document proves that a path u->v that has no nodes in G_0 is the best
-    case. In this cost function, this is not the case, there could be a u->x->v where x is in G_0, that adds more paths
-    than other paths. This is problematic because it can introduce cycles and forces us to make a decision. For the
-    shortest paths we have found from Dijkstra, we can either check if adding them would introduce cycles (in which case
-    there could still be paths like u->x->v where x is in G_0 selected as best path), or we can check if the paths
-    contain any nodes in G_0 and skip them. The former can be achieved easily by nx.find_cycles but probably more
-    efficiently by looking at the topological order of nodes in G_0 and the path. For now, I will check for the latter.
 
     :param G: The graph created using ```readGraph``` function.
     :param G_0: The graph created using ```createG_0``` function.
@@ -797,83 +583,16 @@ def costFunction3(G, G_0, ancestors):
              * bestpath (list): The list of nodes that make up the path to be added to G_0.
     """
 
-    # Obtain the number of paths from node to s in G_0
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource function.
-    # It is here otherwise it will be called twice for every v in vset for every u.
-    nodes = list(nx.topological_sort(G_0))
-
-    # Initialize best score as a big number
-    bestscore = 0
-    bestpath = None
-
-    # G_delta = G - G_0
-    G_delta = getG_delta(G, G_0)
-
-    for u in G_0.nodes():
-        # If all the edges connected to a node is in G_0, node will not be in G_delta
-        if u not in G_delta.nodes():
-            continue
-
-        # Vset is the set of nodes that doesn't have a path to u
-        vset_original = set(G_0.nodes()) - ancestors[u]
-
-        # Self is removed from target v's
-        vset_original.remove(u)
-
-        # Set size can't be changed during iteration so vset is copied.
-        vset_modified = vset_original.copy()
-
-        # Remove v's that cannot be reached in G_delta
-        for v in vset_original:
-            if v not in G_delta.nodes or not nx.has_path(G_delta, u, v):
-                vset_modified.remove(v)
-
-        if len(vset_modified) > 0:
-            start = time.time()
-            # This copy is only here when for loop below is over vset_modified
-            results = multi_target_dijkstra(G_delta, u, vset_modified.copy())
-            end = time.time()
-            print("Dijkstra took {} seconds".format(end - start))
-
-        # In the working version of DAG, this happens over vset_original with checked,
-        # to take into account previously calculated stuff.
-        # Here I've changed it into vset_modified to get rid of checked and maybe
-        # reimplement it later to make sure everything is working ok.
-        # Also, this for loop should be at the same level as if len(vset_modified) > 0 when checked is being used
-        for v in vset_modified:
-            _, u_v_path = results[v]
-
-            # If a node in the path is already in G_0, skip.
-            # For more details, look at the comment below function start.
-            skipFlag = False
-            for node in u_v_path[1:-1]:
-                if node in nodes:
-                    skipFlag = True
-
-            if skipFlag:
-                continue
-
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
-            n_paths = new_n_paths_from_source["t"]
-            if n_paths > bestscore:
-                bestscore = n_paths
-                bestpath = u_v_path
-
-    return bestscore, bestpath
-
-
-def costFunction4(G, G_0, ancestors, a):
-
-    # Obtain the number of paths from node to s/t in G_0
-    n_paths_to_sink = CountPathsToSink(G_0)
-    n_paths_from_source = CountPathsFromSource(G_0)
-
-    # This will be needed for UpdatePathsFromSource and UpdatePathsFromSink functions.
-    # It is here otherwise it will be called twice for every v in vset for every u.
-    nodes = list(nx.topological_sort(G_0))
+    # pre-computed variables depends on the cost function.
+    if cost_function == 1:
+        # get sum of all edges in G_0
+        all_edge_costs = sum([c for c in nx.get_edge_attributes(G_0, "cost").values()])
+    if cost_function == 2 or cost_function == 3:
+        # Obtain the number of paths from node to s/t in G_0
+        n_paths_to_sink = CountPathsToSink(G_0)
+        n_paths_from_source = CountPathsFromSource(G_0)
+        # get list of nodes
+        nodes = list(nx.topological_sort(G_0))
 
     # Initialize best score as a big number
     try:
@@ -886,86 +605,52 @@ def costFunction4(G, G_0, ancestors, a):
     # G_delta = G - G_0
     G_delta = getG_delta(G, G_0)
 
+    print('\nGETTING BEST PATH')
     for u in G_0.nodes():
         # If all the edges connected to a node is in G_0, node will not be in G_delta
         if u not in G_delta.nodes():
             continue
 
-        # Vset is the set of nodes that doesn't have a path to u
-        vset_original = set(G_0.nodes()) - ancestors[u]
+        for v in dist[u].keys():
+            if dist[u][v][1] == None:
+                continue
 
-        # Self is removed from target v's
-        vset_original.remove(u)
+            u_v_cost, u_v_path = dist[u][v]
+            internal_nodes = u_v_path[1:-1]
+            if len(set(internal_nodes).intersection(set(G_0.nodes()))) > 0:
+                print('ERROR: internal node is in G_0!')
+                print(u_v_path)
+                print(internal_nodes,'internal nodes')
+                print(G_0.nodes(),'G_0s nodes')
+                print('!!!')
+                print(dist)
+                print('!!!')
+                for u in dist:
+                    print(' ',u,':',dist[u])
+                print('!!!')
+                sys.exit()
 
-        # Set size can't be changed during iteration so vset is copied.
-        vset_modified = vset_original.copy()
 
-        # Remove v's that cannot be reached in G_delta
-        for v in vset_original:
-            if v not in G_delta.nodes or not nx.has_path(G_delta, u, v):
-                vset_modified.remove(v)
+            if cost_function == 1:
+                # This is the total cost of all edges if u->v path was added to G_0
+                score = all_edge_costs + u_v_cost
 
-        if len(vset_modified) > 0:
-            start = time.time()
-            # This copy is only here when for loop below is over vset_modified
-            results = multi_target_dijkstra(G_delta, u, vset_modified.copy())
-            end = time.time()
-            print("Dijkstra took {} seconds".format(end - start))
+            elif cost_function == 2:
+                score = costFunction2(G,G_0,u,v,u_v_cost,u_v_path, n_paths_to_sink,n_paths_from_source,nodes)
 
-        # In the working version of DAG, this happens over vset_original with checked,
-        # to take into account previously calculated stuff.
-        # Here I've changed it into vset_modified to get rid of checked and maybe
-        # reimplement it later to make sure everything is working ok.
-        # Also, this for loop should be at the same level as if len(vset_modified) > 0 when checked is being used
-        for v in vset_modified:
-            u_v_cost, u_v_path = results[v]
+            elif cost_function == 3:
+                score = costFunction3(G,G_0,u,v,u_v_cost,u_v_path, n_paths_to_sink,n_paths_from_source,nodes)
 
-            # Get how many paths there are from each node to s and t if edge u->v is added to G_0
-            new_n_paths_to_sink = UpdatePathsToSink(G_0, u, v, n_paths_to_sink, nodes)
-            new_n_paths_from_source = UpdatePathsFromSource(G_0, u, v, n_paths_from_source, nodes)
+            elif cost_function == 4:
+                bestscore, bestpath = cost_function(G, G_0, ancestors, a)
 
-            # addedCost is the cost of the path * how many times it appears in all paths from s to t
-            # We can treat the path from u to v as a single edge because all the nodes in between are not in G_0
-            # hence cannot branch into other paths.
-            totalCostOfNewPath = new_n_paths_to_sink[v] * new_n_paths_from_source[u] * u_v_cost
 
-            # TotalCostOfRest is the total cost of G_0 if u->v was added, excluding the cost of u->v.
-            # They are calculated separately because u->v is not actually added to G_0
-            totalCostOfRest = 0
-            for edge in G_0.edges():
-                totalCostOfRest += new_n_paths_to_sink[edge[1]] * new_n_paths_from_source[edge[0]] * \
-                                   G[edge[0]][edge[1]]['cost']
-            score2 = totalCostOfNewPath + totalCostOfRest
-
-            # u->v path is not added to G_0 yet
-            costOfAllEdges = 0
-            costs = nx.get_edge_attributes(G_0, "cost")
-            for cost in costs.values():
-                costOfAllEdges += cost
-
-            # This is the total cost of all edges if u->v path was added to G_0
-            score1 = costOfAllEdges + u_v_cost
-
-            score = a * score1 + (1-a) * score2
             if score < bestscore:
                 bestscore = score
                 bestpath = u_v_path
+                #print('**BEST SCORE SO FAR!',bestscore,bestpath)
 
     return bestscore, bestpath
-
-
-def updateAncestors(G_0, ancestors, start):
-    """
-    Helper function for apply. Updates ancestors after a new path is added.
-
-    :param G_0: The graph created using ```createG_0``` function.
-    :param ancestors: The list created using ```createG_0``` function.
-    :param start: The last node of the newly added path.
-    """
-    for des in G_0.successors(start):
-        ancestors[des] |= ancestors[start]
-        updateAncestors(G_0, ancestors, des)
-
 
 def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transform, a):
     """
@@ -993,7 +678,7 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
     receptors, tfs = addSourceSink(node_file, G)
 
     # Create G_0 and ancestors
-    G_0, ancestors = createG_0(G_0_file, G, receptors, tfs)
+    G_0, ignore = createG_0(G_0_file, G, receptors, tfs)
 
     # initialize distances dictionary
     G_delta = getG_delta(G, G_0)
@@ -1008,19 +693,13 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
 
         # Get the next best path
         start = time.time()
-        if cost_function != costFunction4:
-            bestscore, bestpath = cost_function(G, G_0, ancestors, dist)
-        else:
-            bestscore, bestpath = cost_function(G, G_0, ancestors, a)
+        bestscore, bestpath = get_best_path(G, G_0, dist, cost_function)
         end = time.time()
-        print("#" + str(i), end - start)
-
         # If no more paths, break
         if bestpath is None:
             break
-        print("bestpath:")
-        print(bestpath)
-        print("\n")
+
+        print("#" + str(i), bestpath, 'time:',(end - start),'\n')
 
         # Add edges of the new path to G_0
         for m in range(len(bestpath) - 1):
@@ -1046,66 +725,10 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
     return
 
 
-COST_FUNCTIONS = {1: costFunction1, 2: costFunction2, 3: costFunction3, 4: costFunction4, 5: floydWarshall}
-"""
-Maps the numbers given to argument parser to actual functions to be used in apply.
-When updated, argument parser also needs to be updated.
-"""
-
-
-def main(args):
-    """
-    Helper function to define the argument parser for usage from terminal.
-    """
-    parser = argparse.ArgumentParser(description='DAG')
-    parser.add_argument("G_file",
-                        help="File that contains all the interactions that makes up G, usually the interactome. Must be weighted.")
-
-    parser.add_argument("G_0_file",
-                        help="File that contains the initial DAG.")
-
-    parser.add_argument("node_file",
-                        help="File that contains node ids and their types. Should not contain nodes named 's' or 't'.")
-
-    parser.add_argument("k", type=int, help="Number of paths the algorithm will try to add to G_0. "
-                                            "The algorithm might end earlier if it cannot find more paths.")
-
-    parser.add_argument("--out_file", default=False, help="Output file name. (default='dag-out-{k}.txt')")
-
-    parser.add_argument("--no-log-transform", action="store_true", default=False,
-                        help="If G_file contains interaction costs (lower is better) instead of probabilities"
-                             "(higher is better), this option should be used.")
-
-    parser.add_argument("--cost-function", type=int, choices=COST_FUNCTIONS.keys(), default=2,
-                        help="Choice of cost function. (default=2)\n"
-                             "1-Minimize the total cost of all edges(Dijkstra)."
-                             "2-Minimize the total cost of all paths(Dijkstra)."
-                             "3-Maximize the number of paths using shortest paths(Dijkstra)."
-                             "4-Mixture of 1 and 2 where total score is a*score1 + (1-a)*score2 (default a=0.5)"
-                             "5-Minimize the total cost of all paths(Floyd-Warshall).")
-
-    parser.add_argument("-a", type=float, default=0.5,
-                        help="When cost function 4 is being used, the total score is "
-                             "a*score of cost function 1 + (1-a)*score of cost function 2."
-                             "By default a = 0.5.")
-
-    args = parser.parse_args()
-
-    # If there is no output file name, create one
-    if not args.out_file:
-        args.out_file = "dag-out-{}.txt".format(args.k)
-
-    # Convert the cost function number to the actual function, dictionary is defined right before this function
-    args.cost_function = COST_FUNCTIONS[args.cost_function]
-
-    # Run the main algorithm
-    apply(args.G_file, args.G_0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform,
-          args.a)
-    return
-
-
 if __name__ == "__main__":
     total_start = time.time()
     main(sys.argv)
     total_end = time.time()
+    print()
+    print('%d Dijksta reruns out of %d total' % (NUM_RERUNS,POSS_RERUNS))
     print("Function call took {} seconds in total.".format(total_end - total_start))

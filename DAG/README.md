@@ -23,15 +23,41 @@ These two are used to put the output of DAG.py into graphspace. post.py puts the
 
 ### Test Code
 
-Find first 10 paths from toy (function2):
+Find first 10 paths from toy (functions 1-2):
 
 ```
-python3 DAG.py toy_G.txt toy_G_0.txt toy_nodes.txt 10 --no-log-transform --out_file toy_paths_k10.txt
 python post_simple.py toy_G.txt toy_nodes.txt toy
-python post_simple_paths.py toy_G_0.txt toy_paths_k10.txt toy_nodes.txt toy
+
+python3 DAG.py toy_G.txt toy_G_0.txt toy_nodes.txt --no-log-transform -k 10 -c 1 -o toy_paths_c1_k10.txt
+python post_simple_paths.py toy_G_0.txt toy_paths_c1_k10.txt toy_nodes.txt toy_c1
+
+python3 DAG.py toy_G.txt toy_G_0.txt toy_nodes.txt --no-log-transform -k 10 -c 2 -o toy_paths_c2_k10.txt
+python post_simple_paths.py toy_G_0.txt toy_paths_c2_k10.txt toy_nodes.txt toy_c2
+
+python3 DAG.py toy_G.txt toy_G_0.txt toy_nodes.txt --no-log-transform -k 10 -c 3 -o toy_paths_c3_k10.txt
+python post_simple_paths.py toy_G_0.txt toy_paths_c3_k10.txt toy_nodes.txt toy_c3
+
 ```
 
-Find first 10 paths from Wnt NetPath pathway (function2):
+Find first 25 paths from Wnt NetPath pathway (functions 1-3):
 ```
-python3 DAG.py interactome.txt ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt ../NetPath/Wnt-nodes.txt 10
+python3 DAG.py interactome.txt ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt ../NetPath/Wnt-nodes.txt -k 25 -c 1 -o wnt_paths_c1_k25.txt
+python post_simple_paths.py ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt wnt_paths_c1_k25.txt ../NetPath/Wnt-nodes.txt wnt_c1
+
+python3 DAG.py interactome.txt ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt ../NetPath/Wnt-nodes.txt -k 25 -c 2 -o wnt_paths_c2_k25.txt
+python post_simple_paths.py ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt wnt_paths_c2_k25.txt ../NetPath/Wnt-nodes.txt wnt_c2
+
+python3 DAG.py interactome.txt ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt ../NetPath/Wnt-nodes.txt -k 25 -c 3 -o wnt_paths_c3_k25.txt
+python post_simple_paths.py ../G_0\'s\ from\ PathLinker/Wnt-G_0.txt wnt_paths_c3_k25.txt ../NetPath/Wnt-nodes.txt wnt_c3
+```
+
+## CODE:
+
+To run small Wnt pathlinker datasets:
+
+```
+python3 DAG.py ../data/interactome-weights.txt ../data/prepare-G0/pathlinker/Wnt-G0.txt ../NetPath/Wnt-nodes.txt -k 20 -c 1 -o ../output/pathlinker-G0/Wnt_c1_k20.txt > ../output/pathlinker-G0/Wnt_c1.log
+python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/pathlinker-G0/Wnt_c1_k20.txt ../NetPath/Wnt-nodes.txt Wnt_c1_20paths
+python3 DAG.py ../data/interactome-weights.txt ../data/prepare-G0/pathlinker/Wnt-G0.txt ../NetPath/Wnt-nodes.txt -k 20 -c 2 -o ../output/pathlinker-G0/Wnt_c2_k20.txt > ../output/pathlinker-G0/Wnt_c2.log
+python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/pathlinker-G0/Wnt_c2_k20.txt ../NetPath/Wnt-nodes.txt Wnt_c2_20paths
 ```

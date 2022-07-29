@@ -13,14 +13,7 @@ This is the main file that script for our signaling pathway reconstruction
 using Directed Acyclic Graphs (DAGs) method. This script takes in text files
 that contain an interactome,
 
-Usage:
-    You can use this script with::
-
-        $ python DAG.py interactome.txt G_0.txt nodes.txt 100
-
-    or for more details::
-
-        $ python DAG.py -h
+Usage: python DAG.py -h
 
 Dependencies:
     * NetworkX
@@ -36,12 +29,12 @@ def main(args):
     """
     Helper function to define the argument parser for usage from terminal.
     """
-    parser = argparse.ArgumentParser(description='DAG')
-    parser.add_argument("G_file",
-                        help="File that contains all the interactions that makes up G, usually the interactome. Must be weighted.")
+    parser = argparse.ArgumentParser(description='DAG',formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("interactome_file",
+                        help="All interactions in G (three tab-delim columns: nodeA, nodeB, weight).")
 
-    parser.add_argument("G_0_file",
-                        help="File that contains the initial DAG.")
+    parser.add_argument("G0_file",
+                        help="Initial DAG (G_0) (two tab-delim columns: nodeA, nodeB)")
 
     parser.add_argument("node_file",
                         help="File that contains node ids and their types. Should not contain nodes named 's' or 't'.")
@@ -51,21 +44,15 @@ def main(args):
     parser.add_argument('-o',"--out_file", default=False, help="Output file name. (default='dag-out-{k}.txt')")
 
     parser.add_argument("--no-log-transform", action="store_true", default=False,
-                        help="If G_file contains interaction costs (lower is better) instead of probabilities"
+                        help="If interactome contains interaction costs (lower is better) instead of probabilities"
                              "(higher is better), this option should be used.")
 
-    parser.add_argument('-c',"--cost-function", type=int, choices=[1,2,3,4,5], default=2,
-                        help="Choice of cost function. (default=2)\n"
-                             "1-Minimize the total cost of all edges(Dijkstra)."
-                             "2-Minimize the total cost of all paths(Dijkstra)."
-                             "3-Maximize the number of paths using shortest paths(Dijkstra)."
-                             "4-Mixture of 1 and 2 where total score is a*score1 + (1-a)*score2 (default a=0.5)"
-                             "5-Minimize the total cost of all paths(Floyd-Warshall).")
+    parser.add_argument('-c',"--cost-function", type=int, choices=[1,2,3], default=2,
+                        help="Choice of cost function. (default=2)\n\t1-Minimize the total cost of all edges.\n\t2-Minimize the total cost of all paths.\n\t3-Mixture of 1 and 2 where total score is a*c1 + (1-a)*c2."
+                             )
 
     parser.add_argument("-a", type=float, default=0.5,
-                        help="When cost function 4 is being used, the total score is "
-                             "a*score of cost function 1 + (1-a)*score of cost function 2."
-                             "By default a = 0.5.")
+                        help="Tradeoff param for c3 (between 0 and 1 , default 0.5): a*c1 + (1-a)*c2.")
 
     args = parser.parse_args()
 
@@ -74,7 +61,7 @@ def main(args):
         args.out_file = "dag-out-{}.txt".format(args.k)
 
     # Run the main algorithm
-    apply(args.G_file, args.G_0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform,
+    apply(args.interactome_file, args.G0_file, args.node_file, args.k, args.out_file, args.cost_function, args.no_log_transform,
           args.a)
     return
 

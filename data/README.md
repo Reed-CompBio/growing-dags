@@ -8,6 +8,13 @@ Edges and nodes files from `/Users/aritz//Research/VT/vt-svn/data/interactions/n
 cut -f 1-3 /Users/aritz//Research/VT/vt-svn/data/interactomes/human/2017_01/2017-01-24-human-ppi-weighted.txt  > ../interactome.txt
 ```
 
+In netapath/ dir:
+
+```
+cat *-edges.txt | grep -v '#' | sort -u | cut -f 1,2 | grep -v '-' > all-np-edges.txt
+ cat /Users/aritz//Documents/github/graphlet-tools/Networks/KEGG_expanded/*-expanded-edges.txt | cut -f 1-2 | grep -v - | sort > all-kegg-edges.txt
+```
+
 # SPRAS
 
 To build config file & get input files:

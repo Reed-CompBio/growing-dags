@@ -61,3 +61,36 @@ python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/p
 python3 DAG.py ../data/interactome-weights.txt ../data/prepare-G0/pathlinker/Wnt-G0.txt ../NetPath/Wnt-nodes.txt -k 20 -c 2 -o ../output/pathlinker-G0/Wnt_c2_k20.txt > ../output/pathlinker-G0/Wnt_c2.log
 python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/pathlinker-G0/Wnt_c2_k20.txt ../NetPath/Wnt-nodes.txt Wnt_c2_20paths
 ```
+
+To post paths for all results:
+
+```
+python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/pathlinker-G0/Wnt_c1_k25.txt ../NetPath/Wnt-nodes.txt Wnt_c1
+python post_simple_paths.py ../data/prepare-G0/pathlinker/IL1-G0.txt ../output/pathlinker-G0/IL1_c1_k25.txt ../NetPath/IL1-nodes.txt IL1_c1
+python post_simple_paths.py ../data/prepare-G0/pathlinker/EGFR1-G0.txt ../output/pathlinker-G0/EGFR1_c1_k25.txt ../NetPath/EGFR1-nodes.txt EGFR1_c1
+python post_simple_paths.py ../data/prepare-G0/pathlinker/TCR-G0.txt ../output/pathlinker-G0/TCR_c1_k25.txt ../NetPath/TCR-nodes.txt TCR_c1
+python post_simple_paths.py ../data/prepare-G0/pathlinker/TGFbetaReceptor-G0.txt ../output/pathlinker-G0/TGFbetaReceptor_c1_k25.txt ../NetPath/TGF_beta_Receptor-nodes.txt TGFbetaReceptor_c1
+python post_simple_paths.py ../data/prepare-G0/pathlinker/BCR-G0.txt ../output/pathlinker-G0/BCR_c1_k25.txt ../NetPath/BCR-nodes.txt BCR_c1
+
+python post_simple_paths.py ../data/prepare-G0/pathlinker/Wnt-G0.txt ../output/pathlinker-G0/Wnt_c2_k25.txt ../NetPath/Wnt-nodes.txt Wnt_c2
+python post_simple_paths.py ../data/prepare-G0/pathlinker/IL1-G0.txt ../output/pathlinker-G0/IL1_c2_k25.txt ../NetPath/IL1-nodes.txt IL1_c2
+python post_simple_paths.py ../data/prepare-G0/pathlinker/EGFR1-G0.txt ../output/pathlinker-G0/EGFR1_c2_k25.txt ../NetPath/EGFR1-nodes.txt EGFR1_c2
+python post_simple_paths.py ../data/prepare-G0/pathlinker/TCR-G0.txt ../output/pathlinker-G0/TCR_c2_k25.txt ../NetPath/TCR-nodes.txt TCR_c2
+python post_simple_paths.py ../data/prepare-G0/pathlinker/TGFbetaReceptor-G0.txt ../output/pathlinker-G0/TGFbetaReceptor_c2_k25.txt ../NetPath/TGF_beta_Receptor-nodes.txt TGFbetaReceptor_c2
+python post_simple_paths.py ../data/prepare-G0/pathlinker/BCR-G0.txt ../output/pathlinker-G0/BCR_c2_k25.txt ../NetPath/BCR-nodes.txt BCR_c2
+
+
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/Wnt-G0.txt ../output/ground_truth-G0/Wnt_c1_k25.txt ../NetPath/Wnt-nodes.txt Wnt_c1_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/IL1-G0.txt ../output/ground_truth-G0/IL1_c1_k25.txt ../NetPath/IL1-nodes.txt IL1_c1_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/EGFR1-G0.txt ../output/ground_truth-G0/EGFR1_c1_k25.txt ../NetPath/EGFR1-nodes.txt EGFR1_c1_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/TCR-G0.txt ../output/ground_truth-G0/TCR_c1_k25.txt ../NetPath/TCR-nodes.txt TCR_c1_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/TGFbetaReceptor-G0.txt ../output/ground_truth-G0/TGFbetaReceptor_c1_k25.txt ../NetPath/TGF_beta_Receptor-nodes.txt TGFbetaReceptor_c1_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/BCR-G0.txt ../output/ground_truth-G0/BCR_c1_k25.txt ../NetPath/BCR-nodes.txt BCR_c1_ground_truth
+
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/Wnt-G0.txt ../output/ground_truth-G0/Wnt_c2_k25.txt ../NetPath/Wnt-nodes.txt Wnt_c2_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/IL1-G0.txt ../output/ground_truth-G0/IL1_c2_k25.txt ../NetPath/IL1-nodes.txt IL1_c2_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/EGFR1-G0.txt ../output/ground_truth-G0/EGFR1_c2_k25.txt ../NetPath/EGFR1-nodes.txt EGFR1_c2_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/TCR-G0.txt ../output/ground_truth-G0/TCR_c2_k25.txt ../NetPath/TCR-nodes.txt TCR_c2_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/TGFbetaReceptor-G0.txt ../output/ground_truth-G0/TGFbetaReceptor_c2_k25.txt ../NetPath/TGF_beta_Receptor-nodes.txt TGFbetaReceptor_c2_ground_truth
+python post_simple_paths_gt.py ../data/prepare-G0/ground_truth/BCR-G0.txt ../output/ground_truth-G0/BCR_c2_k25.txt ../NetPath/BCR-nodes.txt BCR_c2_ground_truth
+```

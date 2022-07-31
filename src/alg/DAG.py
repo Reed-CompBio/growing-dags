@@ -5,12 +5,21 @@ import argparse
 import heapq as hq
 import sys
 import time
+import random
+
+random.seed(12345)
 
 NUM_RERUNS = 0
 POSS_RERUNS = 0
 VERBOSE=True # prints time runs.
 ORIG_DISTS = {}
 INTERACTOME = None
+
+# In case old math module
+try:
+    inf = math.inf
+except AttributeError:
+    inf = 99999999999999
 
 """
 This is the main file that script for our signaling pathway reconstruction
@@ -367,15 +376,12 @@ def multi_target_dijkstra(G, u, vset, all_vs):
     Takes in a networkx graph, a starting node u and a set of target nodes vset.
     Returns a dictionary that has nodes as keys and a tuple of distance, path as values.
     """
+
     #print('MULTI_TARGET_DIJKSTRA',u,vset,all_vs)
     #print('u in G?',u in G.nodes())
-    orig_vset = vset.copy()
 
-    # In case old math module
-    try:
-        inf = math.inf
-    except AttributeError:
-        inf = 99999999999999
+    REL_EPS = 1e-10 # epsilon to catch non-precision errors.
+    orig_vset = vset.copy()
 
     seen = {}  # node -> dist
     seen = {u:0}
@@ -406,6 +412,10 @@ def multi_target_dijkstra(G, u, vset, all_vs):
         else:
             for node in G.successors(current_node):
                 dist = current_dist + G[current_node][node]["cost"]
+
+                if node in finished and (dist * (1+REL_EPS)) < finished[node][0]:
+                    sys.exit('ERROR!!')
+
                 if node not in seen or dist < seen[node]:
                     seen[node] = dist
                     hq.heappush(heap, (dist, node, current_path + [node]))
@@ -418,13 +428,9 @@ def multi_target_dijkstra(G, u, vset, all_vs):
     return finished_vset
 
 def heuristic(source,target):
-    if node not in ORIG_DISTS:
+    if source not in ORIG_DISTS:
         print('A* initializing original distances for node',source)
         ORIG_DISTS[source] = nx.single_source_dijkstra_path_length(INTERACTOME, source, weight='cost')
-    try:
-        inf = math.inf
-    except AttributeError:
-        inf = 99999999999999
     return ORIG_DISTS[source].get(target,inf)
 
 def multi_target_Astar(G, u, vset, all_vs):
@@ -441,7 +447,7 @@ def multi_target_Astar(G, u, vset, all_vs):
 
     REL_EPS = 1e-10 # epsilon to catch non-precision errors.
 
-    #print('MULTI_TARGET_DIJKSTRA',u,vset,all_vs)
+    #print('MULTI_TARGET_ASTAR',u,vset,all_vs)
     #print('u in G?',u in G.nodes())
     orig_vset = vset.copy()
 
@@ -449,18 +455,18 @@ def multi_target_Astar(G, u, vset, all_vs):
     seen = {u:0}
 
     heap = []  # contains lists of heur_dist, distance, node, path
-    hq.heappush(heap,(heuristic(u,u),0,u,[u]))
+    hq.heappush(heap,(heuristic(u,u),(0,u,[u])))
 
     finished = {}  # node -> (dist, path)
 
     # Iterate over vset so function will quit when all target nodes are found
     found_vset = set()
     while len(vset) > len(found_vset) and len(heap) > 0:
-        heur_dist, current_dist, current_node, current_path = hq.heappop(heap)
-        #print('--> current node:',current_node,current_dist,current_path)
+        (heur_dist, (current_dist, current_node, current_path)) = hq.heappop(heap)
+        print('--> current node:',current_node,heur_dist,current_dist,current_path)
 
-        # if current_node already has a smaller distance or equal, skip it.
-        if current_node in finished and current_dist >= finished[current_node][0]:
+        # if current_node is already in finished, we've processed it.
+        if current_node in finished:
             continue
 
         # otherwise, update finished dictionary & explore.
@@ -476,22 +482,43 @@ def multi_target_Astar(G, u, vset, all_vs):
                 # actual distance
                 dist = current_dist + G[current_node][node]["cost"]
 
-                # heuristic distance (gives lower bound on length).
-                next_heur_dist = current_dist + heuristic(current_node,node)
-                if next_heur_dist == inf: # if lower bound is inf, skip
-                    print('*XX* SHOULD NEVER TRIGGER?')
-                    sys.exit()
-                    continue
+                # heuristic distance (adds lower bound on length).
+                next_heur_dist = dist + heuristic(u,node)
 
-                # Check that heuristic don't break the search property
-                if node in dist and (dist * (1+REL_EPS)) < dist[node]:
-                    sys.exit('Contradictory search path: bad heuristic? negative weights?')
+                if heuristic(u,node) > dist:
+                    sys.exit('!! SHOULD NEVER TRIGGER??')
+
+                #print('  neighbor',node,next_heur_dist,dist)
+                if next_heur_dist == inf: # if lower bound is inf, skip
+                    sys.exit('*XX* SHOULD NEVER TRIGGER?')
+
+                # Check that heuristic doesn't break the search property
+                if node in finished and (dist * (1+REL_EPS)) < finished[node][0]:
+                    print(' u to current_node:',u,'to',current_node)
+                    print(' curr_path:',current_path)
+                    print(' node:',node)
+                    p= current_path + [node]
+                    for i in range(len(p)-1):
+                        print('  ',p[i],p[i+1],G[p[i]][p[i+1]],heuristic(u,p[i+1])-heuristic(u,p[i]))
+                    print(' curr_dist:',current_dist)
+                    print(' heur to current dist:',heuristic(u,current_node))
+
+                    print(' dist:',dist)
+                    print(' heur to node dist:',heuristic(u,node))
+                    print(' finished[node]:',finished[node])
+                    p = finished[node][1]
+                    for i in range(len(p)-1):
+                        print('  ',p[i],p[i+1],G[p[i]][p[i+1]],heuristic(u,p[i+1])-heuristic(u,p[i]))
+                    inter,interpaths = nx.single_source_dijkstra(INTERACTOME,u,weight='cost')
+                    print(' INTERACTOME:',inter[node],interpaths[node])
+                    sys.exit('!!! Contradictory search path: bad heuristic? negative weights?')
 
                 # finally, if we haven't seen it or this dist is better
                 # than what we've seen, add update seen and the heap.
                 if node not in seen or dist < seen[node]:
                     seen[node] = dist
-                    hq.heappush(heap, (next_heur_dist, dist, node, current_path + [node]))
+                    print('  adding neighbor',node,next_heur_dist,dist,current_path+[node],'*',seen.get(node,'Not in Seen'))
+                    hq.heappush(heap, (next_heur_dist, (dist, node, current_path + [node])))
 
     # new 2022: prune finished to just be vset.
     #print('DONE WITH LOOP: %d == %d or %d == 0' %(len(vset),len(found_vset),len(heap)))
@@ -525,17 +552,6 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
     ## if just G_0 is passed, initialize distances.
     ## otherwise update.
 
-    #generations = [set(g) for g in nx.topological_generations(G_0)]
-    #print('GENERATIONS:',generations)
-    '''
-    print('*'*10)
-    print('G DELTA EDGES')
-    for edge in G_delta.edges():
-        print(edge)
-    print('*'*10)
-    '''
-    #print('\nSTARTING UPDATE')
-
     if dist == {}:
         print('Initializing Distances...')
         num = 0
@@ -545,8 +561,31 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
             upstream = set(nx.ancestors(G_0,u))
             downstream = set(nx.descendants(G_0,u))
             incomparable = set(G_0.nodes()) - upstream - downstream - set([u])
+            start = time.time()
             G_delta_copy = G_delta.copy()
             G_delta_copy.remove_nodes_from(upstream)
+            end = time.time()
+            print('--> Copying G_delta: %f seconds' % (end-start))
+            start = time.time()
+            '''
+            ### check dijkstra & heuristic
+            test1 = multi_target_dijkstra(G_delta_copy, u, downstream.union(incomparable),downstream.union(incomparable))
+            test2,path = nx.single_source_dijkstra(G_delta_copy,u,weight='cost')
+            for n in test1:
+                if n in test2 and test1[n][0] != test2[n]:
+                    sys.exit('**',u,n,'\ntest1:',test1[n],'\ntest2:',test2.get(n,'None'),path.get(n,'None'))
+            test3,path = nx.single_source_dijkstra(INTERACTOME,u,weight='cost')
+            for n in test1:
+                if n in test3 and test1[n][0] < test3[n]:
+                    print('**HEURISTIC1**',u,n,'\ntest1:',test1[n][0],' > \ntest3:',test3[n])
+                    sys.exit()
+            for u,v in G_delta_copy.edges():
+                if u in test3 and v in test3:
+                    if test3[v]-test3[u] > G_delta_copy[u][v]['cost']*(1+1e-10):
+                        print('**HEURISTIC2**',test3[v]-test3[u],'>', G_delta_copy[u][v]['cost']*(1+1e-10))
+                        print(u,v,G_delta_copy[u][v],test3[u],test3[v],test3[v]-test3[u])
+                        sys.exit()
+            '''
             start = time.time()
             dist[u] = multi_target_dijkstra(G_delta_copy, u, downstream.union(incomparable),downstream.union(incomparable))
             end = time.time()
@@ -556,9 +595,8 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
                     if any([x in G_0.nodes() for x in internal_nodes]):
                         print('ERROR: internal node is in G_0!')
                         sys.exit()
-            print("--> Init Dijkstra took {} seconds".format(end - start))
+            print("--> Init Dijkstra: {} seconds".format(end - start))
         print('done init. distances')
-        #sys.exit()
     else:
         #print('Updating Distances...')
 
@@ -608,14 +646,25 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
             NUM_RERUNS += len(rerun)
             POSS_RERUNS += len(downstream.union(incomparable))
 
-            start = time.time()
+            tstart = time.time()
             if len(rerun)>0:
+                start = time.time()
                 G_delta_copy = G_delta.copy()
+                end = time.time()
+                print('--> Copying G_delta: %f seconds' % (end-start))
+                start = time.time()
                 G_delta_copy.remove_nodes_from(upstream)
+                end = time.time()
+                print('--> removingupstream nodes: %f seconds' % (end-start))
+                start = time.time()
+
                 res = multi_target_dijkstra(G_delta_copy, u, rerun, downstream.union(incomparable))
+                end = time.time()
+                print('--> multi-target Dijkstra: %f seconds' % (end-start))
+                start = time.time()
                 dist[u].update(res)
-            end = time.time()
-            #print("Took {} seconds".format(end - start))
+            tend = time.time()
+            print(" --> This RUN took {} seconds".format(tend - tstart))
     #print('ENDING UPDATE\n')
     return dist
 
@@ -689,6 +738,7 @@ def get_best_path(G, G_0, dist, cost_function):
     return bestscore, bestpath
 
 def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transform, a):
+    global INTERACTOME
     """
     The main function for the script.
 
@@ -726,8 +776,6 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
         print('--> ADDING SOURCES/SINKS: %f seconds (cumulative %f s)' % (end-start,end-total_start))
         start = time.time()
 
-    INTERACTOME = G ## set GLOBAL variable for A* heuristic
-
     # Create G_0 and ancestors
     G_0, ignore = createG_0(G_0_file, G, receptors, tfs)
     if VERBOSE:
@@ -741,6 +789,9 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
         end = time.time()
         print('--> GETTING G_Delta: %f seconds (cumulative %f s)' % (end-start,end-total_start))
         start = time.time()
+
+    INTERACTOME = G.copy() ## set GLOBAL variable for A* heuristic
+    print(nx.info(INTERACTOME))
 
     dist = update_distances(G_0,G_delta)
 
@@ -775,7 +826,7 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
             G_0.add_edge(bestpath[m], bestpath[m + 1],
                          weight=G[bestpath[m]][bestpath[m + 1]]['weight'],
                          cost=G[bestpath[m]][bestpath[m + 1]]['cost'])
-        print('G_0 nodes:',G_0.nodes())
+        #print('G_0 nodes:',G_0.nodes())
         if VERBOSE:
             end = time.time()
 
@@ -784,7 +835,7 @@ def apply(G_file, G_0_file, node_file, k, out_file, cost_function, no_log_transf
 
         # update distances dictionary
         G_delta = getG_delta(G, G_0)
-        print('G_delta nodes:',G_0.nodes())
+        #print('G_delta nodes:',G_0.nodes())
         if VERBOSE:
             end = time.time()
 

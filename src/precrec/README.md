@@ -1,3 +1,17 @@
+### `precrec.py`
+
+To calculate precision and recall for Wnt c1 k100:
+```
+python precrec.py ../../output/pathlinker-G0/Wnt_c1_k100.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../output/pathlinker-G0/Wnt_c1_k100-pr
+```
+
+To calculate subsampled precision and recall for Wnt c1 k100:
+```
+python precrec-subsample.py ../../output/pathlinker-G0/Wnt_c1_k100.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-G0/Wnt_c1_k100-pr
+```
+
+# Old Code
+
 ### pr.py
 Contains functions to make a precision recall graph. Can be modified so that you can call the script but for customizability, I have been just importing pr to use getOutput, getPositives and pr methods.
 

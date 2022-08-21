@@ -27,7 +27,7 @@ def precision(dic, pos):
         except ZeroDivisionError:
             prec.append(0)
     return prec
-    
+
 
 def recall(dic, pos):
     total_positives = len(pos)
@@ -74,7 +74,7 @@ def pr(dic, pos):
     outfile_name = "pr_out_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".txt"
     counter = 0
     already_seen = set()
-    
+
     with open(outfile_name, "w") as f:
         if len(dic[1][0]) == 1:
             f.write("#j\tnode\tprecision\trecall\n")
@@ -199,17 +199,17 @@ def main(args):
     Example:
         python pr.py BCR-output.txt nodes .png out_k_100-paths.txt
         python pr.py Wnt-output.txt
-    
+
     Run this in the NetPath folder with the associated nodes/edges/output files.
     """
     output_file = args[1]
     pathway = output_file[:output_file.index("-")]
-    
+
     # Default values
-    mode = "nodes" 
+    mode = "nodes"
     save_format = ".png"
     pl_flag = False
-    
+
     # Parsing over arguments
     n_args = len(args)
     if n_args > 2:
@@ -219,20 +219,20 @@ def main(args):
             if n_args > 4:
                 pl_flag = True
                 pl_output = args[4]
-        
+
     pos = getPositives(pathway, mode)
     # pos is a set containing nodes/edges of the pathway from NetPath
     dic = getOutput(output_file, mode)
     # dic is a dictionary with j as keys and nodes/paths added at j as values
     precision, recall = pr(dic, pos)
     # pr is the main precision-recall function
-    
+
     # Doing the above but for PathLinker output
     if pl_flag:
         p_dic = getOutput(pl_output, mode)
         p_precision, p_recall = pr(p_dic, pos)
         # pos is pathway dependant so will be the same for PathLinker
-    
+
     plt.plot(recall, precision, color = "blue", label = "DAG")
     if pl_flag:
         plt.plot(p_recall, p_precision, color = "red", label = "PathLinker")

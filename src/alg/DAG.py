@@ -377,7 +377,7 @@ def multi_target_dijkstra(G, u, vset, all_vs):
 	Returns a dictionary that has nodes as keys and a tuple of distance, path as values.
 	"""
 
-	print('MULTI_TARGET_DIJKSTRA',u,vset,all_vs)
+	#print('MULTI_TARGET_DIJKSTRA',u,vset,all_vs)
 	#print('u in G?',u in G.nodes())
 
 	dijkstra_start = time.time()
@@ -579,12 +579,8 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
 			else:
 				rerun = set()
 				for v in downstream.union(incomparable):
-					if u == 'P14778':
-						print('**',u,'checking',v)
 					if v not in dist[u] or (dist[u][v][1] != None and len(set(dist[u][v][1]).intersection(internal_nodes))>0) or [u,v] == added_path:
 						rerun.add(v)
-						if u == 'P14778':
-							print('**',u,'--> rerunning',v)
 
 			#print('  Rerun Dijkstra for {} ({}/{})'.format(u,len(rerun),len(downstream.union(incomparable))))
 			NUM_RERUNS += len(rerun)
@@ -595,12 +591,7 @@ def update_distances(G_0,G_delta,dist={},added_path=[]):
 				heldout_edges = remove_nodes_from_Gdelta(G_delta_copy,upstream)
 
 				res = multi_target_dijkstra(G_delta_copy, u, rerun, downstream.union(incomparable))
-				if u == 'P14778':
-					print('** before udpating',u,res)
 				dist[u].update(res)
-				if u == 'P14778':
-					print('** after udpating',u,dist[u])
-
 
 				# add edges back
 				G_delta_copy.add_edges_from(heldout_edges)

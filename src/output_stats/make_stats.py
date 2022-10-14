@@ -7,6 +7,12 @@ import matplotlib.pyplot as plt
 PL = {}
 C1 = {}
 C2 = {}
+GT = {}
+
+COLORS = {'c1':'#6AB1E2','c2':'#376A1D','PL':'#DD8C54'}
+NAMES = {'TGFbetaReceptor':'TGF_beta_Receptor'}
+NUM_NODES = {'BCR':137,'EGFR1':231,'IL1':43,'TCR':154,'TGFbetaReceptor':209,'Wnt':106}
+NUM_EDGES = {'BCR':456,'EGFR1':1456,'IL1':178,'TCR':504,'TGFbetaReceptor':863,'Wnt':428}
 
 def main(labels,k,costs):
     global PL,C1,C2
@@ -14,13 +20,16 @@ def main(labels,k,costs):
 
     for label in labels:
         print('Running label:',label)
-        PL[label] = get_PL_output(label,k)
+        PL[label] = get_PL_output(label,999)
         C1[label] = get_DAG_output(label,k,'c1')
         C2[label] = get_DAG_output(label,k,'c2')
+        GT[label] = get_GT_output(label)
 
-
-        #for i in range(k):
-        #    print(i,PL[label][i],C1[label][i])
+        print('\tNodes Edges Triangles')
+        print('\tGT:',GT[label])
+        print('\tPL:',PL[label][-1])
+        print('\tC1:',C1[label][-1])
+        print('\tC2:',C2[label][-1])
 
     make_plots(labels,k)
 
@@ -33,42 +42,40 @@ def make_plots(labels,k):
     C1_std = []
     C2_std = []
 
-    fig, (ax1,ax2,ax3) = plt.subplots(1,3,figsize=(10,3))
+    fig, (ax1,ax2) = plt.subplots(1,2,figsize=(7,4))
 
     # get average and stddev.
-    for i in range(len(C1[labels[0]])):
+    for i in range(len(PL[labels[0]])):
         PL_means.append([np.mean([PL[l][i][0] for l in labels]),np.mean([PL[l][i][1] for l in labels]),np.mean([PL[l][i][2] for l in labels])])
         PL_std.append([np.std([PL[l][i][0] for l in labels]),np.std([PL[l][i][1] for l in labels]),np.std([PL[l][i][2] for l in labels])])
-        #print('PL',i,PL_means[i],'from',[PL[l][i] for l in labels])
 
     x,y,y_err = get_data_for_plot(PL_means,PL_std,0)
-    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='o',linestyle='-',color='#82b2ff',alpha=0.8,label='PathLinker')
+    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='o',linestyle='-',color=COLORS['PL'],alpha=0.8,label='PathLinker')
+    PL_x_range = max(x)
     x,y,y_err = get_data_for_plot(PL_means,PL_std,1)
-    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='o',linestyle='-',color='#82b2ff',alpha=0.8,label='PathLinker')
-    x,y,y_err = get_data_for_plot(PL_means,PL_std,2)
-    ax3.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='o',linestyle='-',color='#82b2ff',alpha=0.8,label='PathLinker')
+    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='o',linestyle='-',color=COLORS['PL'],alpha=0.8,label='PathLinker')
 
     for i in range(len(C1[labels[0]])):
         C1_means.append([np.mean([C1[l][i][0] for l in labels]),np.mean([C1[l][i][1] for l in labels]),np.mean([C1[l][i][2] for l in labels])])
         C1_std.append([np.std([C1[l][i][0] for l in labels]),np.std([C1[l][i][1] for l in labels]),np.std([C1[l][i][2] for l in labels])])
         #print('C1',i,C1_means[i],'from',[C1[l][i] for l in labels])
     x,y,y_err = get_data_for_plot(C1_means,C1_std,0)
-    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='s',linestyle='-',color='#a13812',alpha=0.8,label='DAG $c_1$')
+    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='s',linestyle='-',color=COLORS['c1'],alpha=0.8,label='DAG $c_1$')
     x,y,y_err = get_data_for_plot(C1_means,C1_std,1)
-    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='s',linestyle='-',color='#a13812',alpha=0.8,label='DAG $c_1$')
-    x,y,y_err = get_data_for_plot(C1_means,C1_std,2)
-    ax3.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='s',linestyle='-',color='#a13812',alpha=0.8,label='DAG $c_1$')
-
+    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='s',linestyle='-',color=COLORS['c1'],alpha=0.8,label='DAG $c_1$')
 
     for i in range(len(C2[labels[0]])):
         C2_means.append([np.mean([C2[l][i][0] for l in labels]),np.mean([C2[l][i][1] for l in labels]),np.mean([C2[l][i][2] for l in labels])])
         C2_std.append([np.std([C2[l][i][0] for l in labels]),np.std([C2[l][i][1] for l in labels]),np.std([C2[l][i][2] for l in labels])])
     x,y,y_err = get_data_for_plot(C2_means,C2_std,0)
-    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='d',linestyle='-',color='#70e055',alpha=0.8,label='DAG $c_2$')
+    ax1.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='d',linestyle='-',color=COLORS['c2'],alpha=0.8,label='DAG $c_2$')
     x,y,y_err = get_data_for_plot(C2_means,C2_std,1)
-    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='d',linestyle='-',color='#70e055',alpha=0.8,label='DAG $c_2$')
-    x,y,y_err = get_data_for_plot(C2_means,C2_std,2)
-    ax3.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='d',linestyle='-',color='#70e055',alpha=0.8,label='DAG $c_2$')
+    ax2.errorbar(x,y,yerr=y_err,elinewidth=1,linewidth=3,marker='d',linestyle='-',color=COLORS['c2'],alpha=0.8,label='DAG $c_2$')
+
+    if len(labels)==1:
+        ## add horizontal line for number of nodes and edges.
+        ax1.plot([0,PL_x_range],[NUM_NODES[labels[0]],NUM_NODES[labels[0]]],'--k',label=labels[0]+' GT')
+        ax2.plot([0,PL_x_range],[NUM_EDGES[labels[0]],NUM_EDGES[labels[0]]],'--k',label=labels[0]+' GT')
 
     # https://matplotlib.org/2.0.2/examples/statistics/errorbar_limits.html
     # ax.errorbar(x, y, xerr=xerr, yerr=yerr, linestyle=ls)
@@ -87,13 +94,6 @@ def make_plots(labels,k):
         ax2.set_title('Avg. Number of Edges')
     ax2.set_xlabel('Iteration $k$')
     ax2.set_ylabel('# Edges')
-    ax3.legend()
-    if len(labels) == 1:
-        ax3.set_title('Number of FFLs')
-    else:
-        ax3.set_title('Avg. Number of FFLs')
-    ax3.set_xlabel('Iteration $k$')
-    ax3.set_ylabel('# FFLS')
 
     plt.tight_layout()
     plt.savefig('%s_k%d.png' % ('-'.join(sorted(labels)),k))
@@ -156,6 +156,21 @@ def get_PL_output(label,k_to_quit):
     PL.append(get_stats(PL_G))
     assert k == len(PL)
     return PL
+
+def get_GT_output(label):
+    GT_file = '../../data/netpath/%s-edges.txt' % (NAMES.get(label,label))
+    print(GT_file)
+    GT_G = nx.DiGraph()
+    c = 0
+    with open(GT_file) as fin:
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            GT_G.add_edge(row[0],row[1])
+            c+=1
+    print(c,GT_G.number_of_nodes(),GT_G.number_of_edges())
+    return get_stats(GT_G)
 
 def get_stats(G):
     triangle_dict = nx.triangles(G.to_undirected())

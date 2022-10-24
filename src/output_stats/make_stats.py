@@ -14,6 +14,15 @@ NAMES = {'TGFbetaReceptor':'TGF_beta_Receptor'}
 NUM_NODES = {'BCR':137,'EGFR1':231,'IL1':43,'TCR':154,'TGFbetaReceptor':209,'Wnt':106}
 NUM_EDGES = {'BCR':456,'EGFR1':1456,'IL1':178,'TCR':504,'TGFbetaReceptor':863,'Wnt':428}
 
+# '../../output/pathlinker-stitched_round3/%s_%s_k%d.txt'
+DAG_FILES = {'BCR c2':'../../output/pathlinker-stitched_round3/BCR_c2_k300.txt',
+    'IL1 c1':'../../output/pathlinker-stitched/IL1_c1_k200.txt',
+    'IL1 c2':'../../output/pathlinker-stitched/IL1_c2_k200.txt',
+    'TCR c2':'../../output/pathlinker-stitched_round3/TCR_c2_k300.txt',
+    'Wnt c1':'../../output/pathlinker-stitched_round4/Wnt_c1_k400.txt',
+    'Wnt c2':'../../output/pathlinker-stitched_round3/Wnt_c2_k300.txt',
+    'TGFbetaReceptor c2':'../../output/pathlinker-stitched_round5/TGFbetaReceptor_c2_k600.txt'}
+
 def main(labels,k,costs):
     global PL,C1,C2
     print('labels:',labels)
@@ -114,7 +123,10 @@ def get_DAG_output(label,total_k,c):
     DAG = []
     DAG_G = nx.DiGraph()
     G0_file = '../../data/prepare-G0/pathlinker/%s-G0.txt' % (label)
-    DAG_file = '../../output/pathlinker-stitched/%s_%s_k%d.txt' % (label,c,total_k)
+    if '%s %s' % (label,c) in DAG_FILES:
+        DAG_file = DAG_FILES['%s %s' % (label,c)]
+    else:
+        DAG_file = '../../output/pathlinker-stitched_round6/%s_%s_k%d.txt' % (label,c,total_k)
     print('  ',G0_file)
     print('  ',DAG_file)
 
@@ -133,7 +145,7 @@ def get_DAG_output(label,total_k,c):
             DAG.append(get_stats(DAG_G))
     #print(len(DAG))
     #print(total_k)
-    assert total_k+1 == len(DAG)
+    #assert total_k+1 == len(DAG)
     return DAG
 
 def get_PL_output(label,k_to_quit):

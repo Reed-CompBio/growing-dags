@@ -1,13 +1,13 @@
 ### `precrec.py`
 
-To calculate precision and recall for Wnt c1 k100:
+To calculate precision and recall for Wnt c1 k200:
 ```
-python precrec.py ../../output/pathlinker-G0/Wnt_c1_k100.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../output/pathlinker-G0/Wnt_c1_k100-pr
+python precrec.py ../../output/pathlinker-stitched/Wnt_c1_k200.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../output/pathlinker-stitched/precrec/Wnt_c1_k200-pr
 ```
 
-To calculate subsampled precision and recall for Wnt c1 k100:
+To calculate subsampled precision and recall for Wnt c1 k200:
 ```
-python precrec-subsample.py ../../output/pathlinker-G0/Wnt_c1_k100.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-G0/Wnt_c1_k100-pr
+python precrec-subsample.py ../../output/pathlinker-stitched/Wnt_c1_k200.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-stitched/precrec/Wnt_c1_k200-pr
 ```
 
 # Old Code

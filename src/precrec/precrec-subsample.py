@@ -14,35 +14,38 @@ def main():
 	args = parseargs()
 	print('Processing:',args.pred_file)
 
-	pos_nodes,pos_edges = get_nodes_edges(args.ground_truth_file)
+	process(args.name,args.pred_file,args.ground_truth_file,args.interactome_file,args.x,args.n,args.k,args.G0_file,args.pathlinker)
+
+def process(name,pred_file,ground_truth_file,interactome_file,x,n,k,G0_file,pathlinker):
+	pos_nodes,pos_edges = get_nodes_edges(ground_truth_file)
 	print('%d positive nodes and %d positive edges' % (len(pos_nodes),len(pos_edges)))
 
 	# check subsampled negative files; generate them if they don't yet exist.
-	check_negs(pos_nodes,pos_edges,args.ground_truth_file,args.interactome_file,args.x,args.n)
+	check_negs(pos_nodes,pos_edges,ground_truth_file,interactome_file,x,n)
 
-	if args.pathlinker:
+	if pathlinker:
 		g0_nodes,g0_edges = (None,None)
 	else:
-		g0_nodes,g0_edges = get_nodes_edges(args.G0_file)
+		g0_nodes,g0_edges = get_nodes_edges(G0_file)
 
-	pred_nodes,pred_edges = get_predictions(args.pred_file,g0_nodes,g0_edges,args.k,pathlinker=args.pathlinker)
+	pred_nodes,pred_edges = get_predictions(pred_file,g0_nodes,g0_edges,k,pathlinker=pathlinker)
 	print('%d predicted nodes and %d predicted edges (including G0)' % (len(pred_nodes),len(pred_edges)))
 
 	node_aucs = []
 	edge_aucs = []
-	for i in range(args.n):
-		subsample_node_file = args.ground_truth_file[:-10]+'/subsampled_negatives/%d_%dx-nodes.txt' % (i,args.x)
+	for i in range(n):
+		subsample_node_file = ground_truth_file[:-10]+'/subsampled_negatives/%d_%dx-nodes.txt' % (i,x)
 		neg_nodes = get_single_col(subsample_node_file)
 
-		subsample_edge_file = args.ground_truth_file[:-10]+'/subsampled_negatives/%d_%dx-edges.txt' % (i,args.x)
+		subsample_edge_file = ground_truth_file[:-10]+'/subsampled_negatives/%d_%dx-edges.txt' % (i,x)
 		ignore,neg_edges = get_nodes_edges(subsample_edge_file)
 
-		node_aucs.append(pr(pred_nodes,pos_nodes,neg_nodes,args.name+'subsample-%d-%dx-nodes.txt' % (i,args.x)))
-		edge_aucs.append(pr(pred_edges,pos_edges,neg_edges,args.name+'subsample-%d-%dx-edges.txt' % (i,args.x)))
+		node_aucs.append(pr(pred_nodes,pos_nodes,neg_nodes,name+'subsample-%d-%dx-nodes.txt' % (i,x)))
+		edge_aucs.append(pr(pred_edges,pos_edges,neg_edges,name+'subsample-%d-%dx-edges.txt' % (i,x)))
 
 	print('NODE AUC: %f +- %f' % (mean(node_aucs),std(node_aucs)))
 	print('EDGE AUC: %f +- %f' % (mean(edge_aucs),std(edge_aucs)))
-	return
+	return node_aucs,edge_aucs
 
 def parseargs():
 	parser = argparse.ArgumentParser(description='precrec')
@@ -191,6 +194,37 @@ def check_negs(pos_nodes,pos_edges,ground_truth_file,interactome_file,x,n):
 			print('Wrote %d negative edges to %s' %(len(negs),outdir+subsample_edge_file))
 	return
 
+def get_pr_at_k(label,k,n,x):
+	node_pr_at_ks = {'_c1_':[],'_c2_':[],'-pathlinker-':[]}
+	edge_pr_at_ks = {'_c1_':[],'_c2_':[],'-pathlinker-':[]}
+	for i in range(n):
+		for version in ['_c1_','_c2_','-pathlinker-']:
+			if 'pathlinker' not in version:
+				nodefile = '../../output/pathlinker-stitched/precrec/%s%sk200-prsubsample-%d-%dx-nodes.txt' % (label,version,i,x)
+				edgefile = '../../output/pathlinker-stitched/precrec/%s%sk200-prsubsample-%d-%dx-edges.txt' % (label,version,i,x)
+			else:
+				nodefile = '../../output/pathlinker/%s%sk200-prsubsample-%d-%dx-nodes.txt' % (label,version,i,x)
+				edgefile = '../../output/pathlinker/%s%sk200-prsubsample-%d-%dx-edges.txt' % (label,version,i,x)
+			#print(label,nodefile,edgefile)
+			with open(nodefile) as fin:
+				for line in fin:
+					if line[0] == '#':
+						continue
+					row = line.strip().split()
+					if int(row[2]) >= k:
+						node_pr_at_ks[version].append(float(row[0]))
+						break
 
+			with open(edgefile) as fin:
+				for line in fin:
+					if line[0] == '#':
+						continue
+					row = line.strip().split()
+					if int(row[2]) >= k:
+						edge_pr_at_ks[version].append(float(row[0]))
+						break
+	print(label,'node lengths:',[len(node_pr_at_ks[x]) for x in ['_c1_','_c2_','-pathlinker-']])
+	print(label,'edge lengths:',[len(edge_pr_at_ks[x]) for x in ['_c1_','_c2_','-pathlinker-']])
+	return node_pr_at_ks,edge_pr_at_ks
 if __name__ == "__main__":
 	main()

@@ -19,9 +19,12 @@ def main():
 
         for cost in ['c1','c2']:
             print('  cost',cost)
-            f1 = '%s/%s_%s_k100.txt' % (args.first_output_dir,p,cost)
-            f2 = '%s/%s_%s_k100.txt' % (args.second_output_dir,p,cost)
-            f_out = '%s/%s_%s_k200.txt' % (args.new_output_dir,p,cost)
+            f1 = '%s/%s_%s_k%d.txt' % (args.first_output_dir,p,cost,args.k1)
+            f2 = '%s/%s_%s_k%d.txt' % (args.second_output_dir,p,cost,args.k2)
+            if not os.path.exists(f2):
+                print('   skipping...')
+                continue
+            f_out = '%s/%s_%s_k%d.txt' % (args.new_output_dir,p,cost,args.k1+args.k2)
             print('\tf1: %s\n\tf2: %s\n\tout: %s' % (f1,f2,f_out))
 
             out = open(f_out,'w')
@@ -44,6 +47,8 @@ def parse_args():
     parser.add_argument("first_output_dir",help="First Output Directory")
     parser.add_argument("second_output_dir",help="Second Directory")
     parser.add_argument("new_output_dir",help="New Directory")
+    parser.add_argument("-k1",type=int,default=100)
+    parser.add_argument("-k2",type=int,default=100)
     args = parser.parse_args()
     print('ARGUMENTS:',args)
     return args

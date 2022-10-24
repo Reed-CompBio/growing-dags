@@ -16,7 +16,7 @@ edge_color = {True: "red", False: "black", "G_0": "#EA1BED"}#pink
 
 # mapper
 id2name = {}
-with open('mapped-nodes.txt') as fin:
+with open('../..//src/alg/mapped-nodes.txt') as fin:
     for line in fin:
         if 'From' in line: # skip header
             continue

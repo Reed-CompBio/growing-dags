@@ -33,7 +33,7 @@ def parseargs():
 	parser.add_argument("ground_truth_file",help="ground truth file (e.g., NP Pathway)")
 	parser.add_argument("name",help="output prefix.")
 	parser.add_argument('-p','--pathlinker',action='store_true',help='Compute PR for PathLinker output (default=False).')
-	parser.add_argument('-k',type=int,default=100,help='stop after processing k (default=100)')
+	parser.add_argument('-k',type=int,default=1000,help='stop after processing k (default=1000)')
 	return parser.parse_args()
 
 def get_nodes_edges(infile):

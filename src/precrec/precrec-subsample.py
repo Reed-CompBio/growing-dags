@@ -55,7 +55,7 @@ def parseargs():
 	parser.add_argument("interactome_file",help='interactome file to subsample negatives')
 	parser.add_argument("name",help="output prefix.")
 	parser.add_argument('-p','--pathlinker',action='store_true',help='Compute PR for PathLinker output (default=False).')
-	parser.add_argument('-k',type=int,default=100,help='stop after processing k (default=100)')
+	parser.add_argument('-k',type=int,default=1000,help='stop after processing k (default=1000)')
 	parser.add_argument('-x',type=int,default=50,help='subsample x times the number of positives (default: 50).')
 	parser.add_argument('-n',type=int,default=10,help='number of iterations to sample (default: 10).')
 	return parser.parse_args()

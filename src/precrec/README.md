@@ -1,4 +1,26 @@
-### `precrec.py`
+
+### table writer (also generates prec-rec files)
+
+```
+python precrec-table-writer.py
+```
+
+
+### `prerec.py` for Fixed Sized Networks
+
+To calculate precision and recall for Wnt c1:
+```
+python precrec.py ../../output/pathlinker-final/Wnt_c1_nodes.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../output/pathlinker-final/precrec/Wnt_c1_nodes-pr
+python precrec.py ../../output/pathlinker-final/Wnt_c1_edges.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../output/pathlinker-final/precrec/Wnt_c1_edges-pr
+```
+
+To calculate subsampled precision and recall for Wnt c1 k200:
+```
+python precrec-subsample.py ../../output/pathlinker-final/Wnt_c1_nodes.txt  ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-final/precrec/Wnt_c1_nodes-pr
+python precrec-subsample.py ../../output/pathlinker-final/Wnt_c1_edges.txt  ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-final/precrec/Wnt_c1_edges-pr
+```
+
+### `precrec.py` From Initial JCB Submission
 
 To calculate precision and recall for Wnt c1 k200:
 ```
@@ -9,7 +31,6 @@ To calculate subsampled precision and recall for Wnt c1 k200:
 ```
 python precrec-subsample.py ../../output/pathlinker-stitched/Wnt_c1_k200.txt ../../data/prepare-G0/pathlinker/Wnt-G0.txt ../../data/netpath/Wnt-edges.txt ../../data/interactome-weights.txt ../../output/pathlinker-stitched/precrec/Wnt_c1_k200-pr
 ```
-
 # Old Code
 
 ### pr.py

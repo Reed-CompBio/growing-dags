@@ -1,5 +1,13 @@
 
 ```
+python viz_pr.py nodes
+python viz_pr.py edges
+
+python viz_pr_subsample.py nodes
+python viz_pr_subsample.py edges
+```
+
+```
 bash post_simple_paths.bash
 ```
 

@@ -39,7 +39,7 @@ def main():
 def make_node_plot():
 
     ## NODES FIRST
-    fig, axes = plt.subplots(2,3,figsize=(12,8))
+    fig, axes = plt.subplots(2,3,figsize=(10,5))
     for i,ax in enumerate(axes.flat):
         p = PATHWAYS[i]
         print(i,p)
@@ -70,7 +70,7 @@ def make_node_plot():
 
 def make_edge_plot():
     plt.clf()
-    fig, axes = plt.subplots(2,3,figsize=(12,8))
+    fig, axes = plt.subplots(2,3,figsize=(10,5))
     for i,ax in enumerate(axes.flat):
         p = PATHWAYS[i]
         print(i,p)

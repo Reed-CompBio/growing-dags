@@ -10,10 +10,10 @@ def main():
 	for p in PATHWAYS:
 		DATA = []
 		for c in ['c1','c2']:
-			name = '../../output/pathlinker-stitched/%s_%s_k200-nodes.txt' % (p,c)
+			name = '../../output/pathlinker-final/%s_%s_all-nodes.txt' % (p,c)
 			DATA.append(get_nodes(name))
 
-		name = '../../output/pathlinker/%s-pathlinker-k200-nodes.txt' % (p)
+		name = '../../output/pathlinker-final/%s_PL_all-nodes.txt' % (p)
 		DATA.append(get_nodes(name))
 		ax = axes[i]
 		#print(DATA)

@@ -62,7 +62,7 @@ def main(nodes_or_edges):
             ax.set_xlabel('Recall')
             ax.set_ylabel('Precision')
             ax.set_ylim(0,1.1)
-            #ax.set_xlim(-.01,0.5)
+            ax.set_xlim(-.01,0.5)
             ax.set_title(pathway+' Nodes')
             ax.legend(fontsize=8)
 
@@ -87,7 +87,7 @@ def main(nodes_or_edges):
             ax.set_xlabel('Recall')
             ax.set_ylabel('Precision')
             ax.set_ylim(-.05,1.1)
-            #ax.set_xlim(-.01,0.55)
+            ax.set_xlim(-.01,0.55)
             ax.set_title(pathway+' Edges')
             ax.legend(fontsize=8)
 

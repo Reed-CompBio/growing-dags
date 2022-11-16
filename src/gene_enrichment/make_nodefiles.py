@@ -2,7 +2,7 @@
 PATHWAYS = ['BCR','EGFR1','IL1','TCR','TGFbetaReceptor','Wnt']
 NAMES = {'TGFbetaReceptor':'TGF_beta_Receptor'}
 
-k = 200
+k =10000
 def main():
 	make_nodefiles()
 	make_unique_nodefiles()
@@ -16,8 +16,8 @@ def make_nodefiles():
 			pathlinker = False
 
 			for c in ['c1','c2']:
-				pred_file = '../../output/pathlinker-stitched/%s_%s_k200.txt' % (p,c)
-				name = '../../output/pathlinker-stitched/%s_%s_k200-nodes.txt' % (p,c)
+				pred_file = '../../output/pathlinker-final/%s_%s_nodes.txt' % (p,c)
+				name = '../../output/pathlinker-final/%s_%s_all-nodes.txt' % (p,c)
 				print('writing to',name)
 				pred_nodes,pred_edges = get_predictions(pred_file,g0_nodes,g0_edges,k,pathlinker)
 				out = open(name,'w')
@@ -27,8 +27,8 @@ def make_nodefiles():
 
 			pathlinker = True
 			g0_nodes,g0_edges = (None,None)
-			pred_file = '../../output/pathlinker/%s-pathlinker.txt' % (p)
-			name = '../../output/pathlinker/%s-pathlinker-k200-nodes.txt' % (p)
+			pred_file = '../../output/pathlinker-final/%s_PL_nodes.txt' % (p)
+			name = '../../output/pathlinker-final/%s_PL_all-nodes.txt' % (p)
 			print('writing to',name)
 			pred_nodes,pred_edges = get_predictions(pred_file,g0_nodes,g0_edges,k,pathlinker)
 			out = open(name,'w')
@@ -40,26 +40,26 @@ def make_unique_nodefiles():
 		for p in PATHWAYS:
 
 
-			c1 = get_nodes('../../output/pathlinker-stitched/%s_c1_k200-nodes.txt' % (p))
-			c2 = get_nodes('../../output/pathlinker-stitched/%s_c2_k200-nodes.txt' % (p))
-			PL = get_nodes('../../output/pathlinker/%s-pathlinker-k200-nodes.txt' % (p))
+			c1 = get_nodes('../../output/pathlinker-final/%s_c1_all-nodes.txt' % (p))
+			c2 = get_nodes('../../output/pathlinker-final/%s_c2_all-nodes.txt' % (p))
+			PL = get_nodes('../../output/pathlinker-final/%s_PL_all-nodes.txt' % (p))
 
 
-			name = '../../output/pathlinker-stitched/%s_c1_k200-unique-nodes.txt' % (p)
+			name = '../../output/pathlinker-final/%s_c1_unique-nodes.txt' % (p)
 			print('writing to',name)
 			out = open(name,'w')
 			for n in c1.difference(c2).difference(PL):
 				out.write(n+'\n')
 			out.close()
 
-			name = '../../output/pathlinker-stitched/%s_c2_k200-unique-nodes.txt' % (p)
+			name = '../../output/pathlinker-final/%s_c2_unique-nodes.txt' % (p)
 			print('writing to',name)
 			out = open(name,'w')
 			for n in c2.difference(c1).difference(PL):
 				out.write(n+'\n')
 			out.close()
 
-			name = '../../output/pathlinker/%s-pathlinker-k200-unique-nodes.txt' % (p)
+			name = '../../output/pathlinker-final/%s_PL_unique-nodes.txt' % (p)
 			print('writing to',name)
 			out = open(name,'w')
 			for n in PL.difference(c1).difference(c2):
